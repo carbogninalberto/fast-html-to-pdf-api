@@ -1,0 +1,30 @@
+Html2pdf API Software License
+Copyright (c) 2024 Bakney srl
+Non-Commercial Use
+This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License for non-commercial use. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+Commercial Use
+For any commercial use, including but not limited to use in any application or service that generates revenue, or by any entity that is not a registered non-profit organization, a commercial license must be obtained from Bakney srl. The following one-time fee structure applies, based on the licensee's total annual revenue from the last fiscal year as reported in their balance sheet:
+
+Annual revenue up to $100,000: $250 license fee
+Annual revenue $100,001 to $1,000,000: $1,000 license fee
+Annual revenue $1,000,001 to $10,000,000: $5,000 license fee
+Annual revenue over $10,000,000: $10,000 license fee
+
+All fees are subject to applicable taxes.
+To obtain a commercial license, contact Bakney srl at info@bakney.com.
+Scope of Use
+Upon payment of the appropriate license fee, the licensee is granted the right to use the software extensively within their business operations. This includes, but is not limited to, integration into multiple products or services, use across various departments, and deployment on multiple servers or instances, as long as such use is within the licensee's organization.
+Restrictions on Use
+The licensee is expressly prohibited from using the software to provide a direct service that primarily consists of rendering HTML to PDF, creating screenshots, generating videos from HTML, or any similar functionality that directly replicates the core features of the Html2pdf API. This restriction applies regardless of whether such services are offered for free or for a fee.
+Modifications
+The software may be adapted only for the purpose of internal business needs of the licensed entity. No other modifications or derivative works are permitted without explicit written permission from Bakney srl.
+No Warranty or Support
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+No support or maintenance is provided with this license.
+License Changes
+Bakney srl reserves the right to change the terms of this license for future versions of the software. Each version of the software will be bound by the license terms in effect at the time of its release.
+Definitions
+
+"Software" refers to the Html2pdf API and any associated code, documentation, or materials provided by Bakney srl.
+"Annual revenue" refers to the total revenue as reported in the licensee's most recent annual balance sheet or equivalent financial statement.
+"Direct service" means a primary business offering or product that substantially relies on or replicates the core functionality of the Html2pdf API.
