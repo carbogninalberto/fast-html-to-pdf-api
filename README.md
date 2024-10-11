@@ -1,6 +1,6 @@
-# Fast HTML2PDF API
+# Fast HTML to PDF, Screenshots, and Video API
 
-Welcome to the **Fast HTML2PDF API**! 🚀
+Welcome to the **Fast HTML to PDF, Screenshots, and Video API**! 🚀
 
 This is a lightweight version of the software used at [html2pdfapi.com](https://html2pdfapi.com).
 
