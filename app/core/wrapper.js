@@ -43,7 +43,7 @@ import { validateConfig } from "../utils/validator.js";
 
 export class PuppeteerWrapper {
   constructor(config) {
-    console.log("config", config);
+    // console.log("config", config);
     this.browser = null;
     this.page = null;
     this.recorder = null;
@@ -220,6 +220,8 @@ export class PuppeteerWrapper {
     await this.page.setCacheEnabled(this.device.cache);
     await this.page.setUserAgent(this.userAgent);
 
+    await this.page.setExtraHTTPHeaders(this.headers);
+
     await this.page.setViewport({
       width: this.device.width,
       height: this.device.height,
@@ -275,7 +277,7 @@ export class PuppeteerWrapper {
     }
 
     await this.page.goto(this.url, { waitUntil: this.render.waitUntil });
-    if (this.render.waitTime && this.render.waitTime > 0) {
+    if (this.render.waitTime && this.render.waitTime >= 0) {
       await new Promise((resolve) => setTimeout(resolve, this.render.waitTime));
     }
 

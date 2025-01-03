@@ -26,7 +26,7 @@ export function validateConfig(config) {
           .object({
             position: z.number().nonnegative().optional(),
             animate: z.boolean().optional(),
-            duration: z.number().positive().optional(),
+            duration: z.number().nonnegative().optional(),
             animation: z.string().optional(),
           })
           .optional(),
