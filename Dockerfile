@@ -12,12 +12,13 @@ RUN apt-get update && apt-get install curl gnupg ffmpeg -y \
     && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
     && apt-get update \
     && apt-get install google-chrome-stable -y --no-install-recommends \
+    && apt-get install -y libvips-dev \
     && rm -rf /var/lib/apt/lists/*
 # Copy package.json and package-lock.json (if available)
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --os=linux --cpu=x64 sharp
 
 # Copy the rest of your app's source code
 COPY . .
