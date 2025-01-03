@@ -24,6 +24,16 @@ For usage in commercial services, please refer to the `license.txt` file in this
 
 Note: License is not enforced, but we are a small team, and any support to further develop this product would be greatly appreciated! 🙏
 
+## How to create your API call
+
+Use the Playground at [html2pdfapi](https://html2pdfapi.com/playground) (a free account is required), to create the API request in your favorite language.
+You can omit the `apiKey` parameter.
+
+The Saas solution of our service provides out-of-the-box async support so that you don't have to implement your own.
+
+There are many libraries you can use to achieve it, it depends on the language you are using, this is a very lightweight and versatile solution if you are looking
+for a simple, yet performant solution.
+
 ## Getting Started with Development
 
 To get started, run the following commands:
