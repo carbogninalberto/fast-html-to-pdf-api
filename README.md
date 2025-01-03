@@ -6,9 +6,23 @@ This is a lightweight version of the software used at [html2pdfapi.com](https://
 
 It provides a basic yet performant wrapper along with additional features to enhance the standard Puppeteer experience.
 
-For usage in commercial services, please refer to the `license.txt` file located in this repository.
+## Features
 
-We are a small team, and any support to further develop this product is greatly appreciated! 🙏
+✅ Generate PNG images from any URL<br>
+✅ Generate PDFs from any URL<br>
+✅ Generate Videos from any URL with smooth animation<br>
+✅ Support for custom headers (like Authorization)<br>
+✅ Support to render Lazy animations<br>
+✅ Additional support for blocking: Cookies, Ads, Trackers, Banner<br>
+✅ High-Performance webserver<br>
+✅ Extended and simplified API wrapper to Puppeteer
+
+
+## License
+
+For usage in commercial services, please refer to the `license.txt` file in this repository.
+
+Note: License is not enforced, but we are a small team, and any support to further develop this product would be greatly appreciated! 🙏
 
 ## Getting Started with Development
 
