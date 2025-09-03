@@ -1,10 +1,10 @@
-import puppeteer from "puppeteer";
 import { captureImage } from "./image.js";
 import { capturePDF } from "./pdf.js";
 import { captureVideo } from "./video.js";
 import { captureHTML } from "./html.js";
 import { blockCookies } from "./cookies.js";
 import { validateConfig } from "../utils/validator.js";
+import browserPool from "./browser-pool.js";
 
 /**
  * Configuration for the page setup.
@@ -47,6 +47,7 @@ export class PuppeteerWrapper {
     this.browser = null;
     this.page = null;
     this.recorder = null;
+    this.poolResource = null;
 
     // generation config
     this.url = config?.url ?? "";
@@ -210,10 +211,9 @@ export class PuppeteerWrapper {
    */
   async initialize() {
     // BROWSER & PAGE INITIALIZATION
-    this.browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    this.page = await this.browser.newPage();
+    this.poolResource = await browserPool.acquire();
+    this.browser = this.poolResource.browser;
+    this.page = this.poolResource.page;
 
     // Set scale factor & other things to simulate a real google chrome browser
     await this.page.setJavaScriptEnabled(true);
@@ -329,8 +329,11 @@ export class PuppeteerWrapper {
   }
 
   async close() {
-    if (this.browser) {
-      await this.browser.close();
+    if (this.poolResource) {
+      await browserPool.release(this.poolResource);
+      this.poolResource = null;
+      this.browser = null;
+      this.page = null;
     }
   }
 }

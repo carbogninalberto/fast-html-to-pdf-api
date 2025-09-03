@@ -5,10 +5,8 @@ export async function captureImage(page, config) {
     fullPage: config.render?.fullPage ?? false,
   });
 
-  let sharpImage = sharp(result);
-
   const {
-    type,
+    type = "png",
     compression,
     smooth,
     quality,
@@ -19,105 +17,80 @@ export async function captureImage(page, config) {
     crop,
   } = config.image;
 
-  // Set image type
-  switch (type) {
-    case "jpeg":
-      sharpImage = sharpImage.jpeg();
-      break;
-    case "png":
-      sharpImage = sharpImage.png();
-      break;
-    case "webp":
-      sharpImage = sharpImage.webp();
-      break;
-    case "gif":
-      sharpImage = sharpImage.gif();
-      break;
-    case "avif":
-      sharpImage = sharpImage.avif();
-      break;
-    default:
-      sharpImage = sharpImage.png(); // Default to PNG
-  }
+  // Initialize Sharp pipeline
+  let sharpImage = sharp(result);
+  
+  // Cache metadata once at the beginning
+  const originalMetadata = await sharpImage.metadata();
+  
+  // Track current dimensions for operations that need them
+  let currentWidth = originalMetadata.width;
+  let currentHeight = originalMetadata.height;
 
-  // Set compression
-  if (compression && compression > 0) {
-    const compressionLevel =
-      compression === "low" ? 3 : compression === "medium" ? 6 : 9;
-    sharpImage = sharpImage.png({ compressionLevel });
-  }
-
-  // Set quality
-  if (quality && quality > 0) {
-    sharpImage = sharpImage.png({ quality: quality ?? 100 });
-  }
-
-  // Set smooth (adaptive filtering)
-  if (smooth) {
-    sharpImage = sharpImage.png({ adaptiveFiltering: true });
-  }
-
-  // Rotate
-  if (rotate && typeof rotate === "number" && rotate != 0) {
-    sharpImage = sharpImage.rotate(rotate);
-  }
-
-  // Crop
+  // Apply crop first if specified (before other transformations)
   if (crop) {
     let { width, height, x, y } = crop;
-    const metadata = await sharpImage.metadata();
-    // check if width and height are set and are within, otherwise use metadata
-    if (!width || width > metadata.width) width = metadata.width;
-    if (!height || height > metadata.height) height = metadata.height;
+    
+    // Validate and adjust crop dimensions
+    if (!width || width > currentWidth) width = currentWidth;
+    if (!height || height > currentHeight) height = currentHeight;
+    
     const cropConfig = {
       left: x ?? 0,
       top: y ?? 0,
       width: width,
       height: height,
     };
+    
     sharpImage = sharpImage.extract(cropConfig);
+    
+    // Update current dimensions after crop
+    currentWidth = width;
+    currentHeight = height;
   }
 
-  // Resize
-  if (resize && typeof resize === "number" && resize != 1) {
-    const metadata = await sharpImage.metadata();
-    let height = metadata.height;
-    let width = metadata.width;
-
-    // change based on crop options
-    if (crop) {
-      height = crop.height;
-      width = crop.width;
+  // Apply rotation (affects dimensions)
+  if (rotate && typeof rotate === "number" && rotate !== 0) {
+    sharpImage = sharpImage.rotate(rotate);
+    
+    // Update dimensions if rotation is 90 or 270 degrees
+    if (rotate % 180 === 90) {
+      [currentWidth, currentHeight] = [currentHeight, currentWidth];
     }
+  }
 
+  // Apply resize
+  if (resize && typeof resize === "number" && resize !== 1) {
     const factor = Math.min(Math.max(resize, 0.1), 3); // Limit factor between 0.1 and 3
-    const newWidth = Math.round(width * factor);
-    const newHeight = Math.round(height * factor);
-    sharpImage = sharpImage.resize(newWidth, newHeight);
+    const newWidth = Math.round(currentWidth * factor);
+    const newHeight = Math.round(currentHeight * factor);
+    
+    sharpImage = sharpImage.resize(newWidth, newHeight, {
+      fit: 'fill',
+      kernel: 'lanczos3' // Better quality for resizing
+    });
+    
+    // Update current dimensions
+    currentWidth = newWidth;
+    currentHeight = newHeight;
   }
 
-  // Rounded borders
+  // Apply rounded borders
   if (roundedBorders && roundedBorders > 0) {
-    const cornerRadius =
-      typeof roundedBorders === "number" ? roundedBorders : 20;
-    let { width, height } = await sharpImage.metadata();
-
-    if (crop) {
-      height = crop.height;
-      width = crop.width;
-    }
-
+    const cornerRadius = typeof roundedBorders === "number" ? roundedBorders : 20;
+    
     const roundedCorners = Buffer.from(
-      `<svg><rect x="0" y="0" width="${width}" height="${height}" rx="${cornerRadius}" ry="${cornerRadius}"/></svg>`
+      `<svg><rect x="0" y="0" width="${currentWidth}" height="${currentHeight}" rx="${cornerRadius}" ry="${cornerRadius}"/></svg>`
     );
+    
     sharpImage = sharpImage.composite([
       { input: roundedCorners, blend: "dest-in" },
     ]);
   }
 
-  // Padding
+  // Apply padding
   if (padding && padding > 0) {
-    let pad = typeof padding === "number" ? padding : 20;
+    const pad = typeof padding === "number" ? padding : 20;
     sharpImage = sharpImage.extend({
       top: pad,
       bottom: pad,
@@ -127,5 +100,59 @@ export async function captureImage(page, config) {
     });
   }
 
+  // Set output format and compression settings in a single chain
+  const formatOptions = {};
+  
+  switch (type) {
+    case "jpeg":
+      formatOptions.quality = quality ?? 80;
+      formatOptions.mozjpeg = true; // Use mozjpeg for better compression
+      sharpImage = sharpImage.jpeg(formatOptions);
+      break;
+      
+    case "png":
+      formatOptions.quality = quality ?? 100;
+      
+      // Set compression level
+      if (compression && compression > 0) {
+        formatOptions.compressionLevel = 
+          compression === "low" ? 3 : 
+          compression === "medium" ? 6 : 
+          typeof compression === "number" ? compression : 9;
+      }
+      
+      // Set adaptive filtering for smoothing
+      if (smooth) {
+        formatOptions.adaptiveFiltering = true;
+        formatOptions.palette = true; // Optimize palette for smaller file size
+      }
+      
+      sharpImage = sharpImage.png(formatOptions);
+      break;
+      
+    case "webp":
+      formatOptions.quality = quality ?? 80;
+      formatOptions.effort = 4; // Balance between speed and compression
+      sharpImage = sharpImage.webp(formatOptions);
+      break;
+      
+    case "avif":
+      formatOptions.quality = quality ?? 50;
+      formatOptions.speed = 5; // Balance between speed and compression
+      sharpImage = sharpImage.avif(formatOptions);
+      break;
+      
+    case "gif":
+      sharpImage = sharpImage.gif({
+        effort: 7,
+        dither: 1.0
+      });
+      break;
+      
+    default:
+      sharpImage = sharpImage.png(); // Default to PNG
+  }
+
+  // Return the final buffer
   return await sharpImage.toBuffer();
 }
