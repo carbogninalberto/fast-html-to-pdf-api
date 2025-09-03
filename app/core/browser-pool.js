@@ -26,15 +26,20 @@ class BrowserPool {
               "--disable-blink-features=AutomationControlled",
               "--disable-web-security",
               "--disable-features=IsolateOrigins,site-per-process",
+              "--disable-hang-monitor",
+              "--disable-default-apps",
+              "--mute-audio",
+              "--disable-translate",
+              "--no-default-browser-check",
             ],
             ...options.browserOptions,
           });
-          
+
           browser._poolCreatedAt = Date.now();
-          
+
           // Create a single page that will be reused
           const page = await browser.newPage();
-          
+
           return { browser, page };
         } catch (error) {
           console.error("Failed to create browser instance:", error);
@@ -58,17 +63,17 @@ class BrowserPool {
           if (!resource.browser || !resource.browser.isConnected()) {
             return false;
           }
-          
+
           if (!resource.page || resource.page.isClosed()) {
             return false;
           }
-          
-          // Recycle browsers after 30 minutes to prevent memory leaks
+
+          // Recycle browsers after 10 minutes to prevent memory leaks
           const age = Date.now() - resource.browser._poolCreatedAt;
-          if (age > 30 * 60 * 1000) {
+          if (age > 10 * 60 * 1000) {
             return false;
           }
-          
+
           // Test if page is responsive
           await resource.page.evaluate(() => true);
           return true;
@@ -111,7 +116,7 @@ class BrowserPool {
     try {
       const minSize = this.pool.min;
       const promises = [];
-      
+
       for (let i = 0; i < minSize; i++) {
         promises.push(
           this.pool.acquire().then((resource) => {
@@ -119,7 +124,7 @@ class BrowserPool {
           })
         );
       }
-      
+
       await Promise.all(promises);
       console.log(`Browser pool warmed up with ${minSize} instances`);
     } catch (error) {
@@ -131,13 +136,13 @@ class BrowserPool {
     if (this.isShuttingDown) {
       throw new Error("Browser pool is shutting down");
     }
-    
+
     try {
       const resource = await this.pool.acquire();
-      
+
       // Only clear minimal state for performance
       await this.fastClear(resource.page);
-      
+
       return resource;
     } catch (error) {
       console.error("Failed to acquire browser from pool:", error);
@@ -159,25 +164,25 @@ class BrowserPool {
     try {
       // Navigate to blank page to clear any state
       await page.goto("about:blank", { waitUntil: "domcontentloaded" });
-      
+
       // Clear cookies
       const cookies = await page.cookies();
       if (cookies.length > 0) {
         await page.deleteCookie(...cookies);
       }
-      
+
       // Clear local storage and session storage
       await page.evaluate(() => {
         if (typeof localStorage !== 'undefined') localStorage.clear();
         if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
       });
-      
+
       // Reset viewport to default
       await page.setViewport({ width: 1920, height: 1080 });
-      
+
       // Clear any extra HTTP headers
       await page.setExtraHTTPHeaders({});
-      
+
       // Reset user agent
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -194,7 +199,7 @@ class BrowserPool {
       await this.pool.release(resource);
     } catch (error) {
       console.error("Error releasing browser to pool:", error);
-      
+
       // If release fails, try to destroy the resource
       try {
         await this.pool.destroy(resource);
@@ -206,7 +211,7 @@ class BrowserPool {
 
   async drain() {
     this.isShuttingDown = true;
-    
+
     try {
       await this.pool.drain();
       await this.pool.clear();
@@ -220,7 +225,7 @@ class BrowserPool {
     if (!this.pool) {
       return null;
     }
-    
+
     return {
       size: this.pool.size,
       available: this.pool.available,
