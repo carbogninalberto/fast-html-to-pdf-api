@@ -1,63 +1,149 @@
 import puppeteer from "puppeteer";
 import genericPool from "generic-pool";
+import { EventEmitter } from "events";
 
-class BrowserPool {
+class BrowserPool extends EventEmitter {
   constructor() {
+    super();
     this.pool = null;
     this.isShuttingDown = false;
+    this.metrics = {
+      totalAcquired: 0,
+      totalReleased: 0,
+      totalErrors: 0,
+      totalRecycled: 0,
+    };
   }
 
   initialize(options = {}) {
+    const defaultBrowserArgs = [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process", // Better for containerized environments
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      "--disable-features=site-per-process",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins,site-per-process",
+      "--disable-hang-monitor",
+      "--disable-default-apps",
+      "--mute-audio",
+      "--disable-translate",
+      "--no-default-browser-check",
+      "--disable-extensions",
+      "--disable-component-extensions-with-background-pages",
+      `--window-size=${options.windowWidth || 1920},${options.windowHeight || 1080}`,
+    ];
+
     const factory = {
       create: async () => {
-        try {
-          const browser = await puppeteer.launch({
-            args: [
-              "--no-sandbox",
-              "--disable-setuid-sandbox",
-              "--disable-dev-shm-usage",
-              "--disable-gpu",
-              "--no-first-run",
-              "--no-zygote",
-              "--disable-background-timer-throttling",
-              "--disable-backgrounding-occluded-windows",
-              "--disable-renderer-backgrounding",
-              "--disable-features=site-per-process",
-              "--disable-blink-features=AutomationControlled",
-              "--disable-web-security",
-              "--disable-features=IsolateOrigins,site-per-process",
-              "--disable-hang-monitor",
-              "--disable-default-apps",
-              "--mute-audio",
-              "--disable-translate",
-              "--no-default-browser-check",
-            ],
-            ...options.browserOptions,
-          });
+        const startTime = Date.now();
+        let retries = 3;
 
-          browser._poolCreatedAt = Date.now();
+        while (retries > 0) {
+          try {
+            const browser = await puppeteer.launch({
+              headless: options.headless !== false ? "new" : false,
+              args: options.browserArgs || defaultBrowserArgs,
+              timeout: options.launchTimeout || 30000,
+              ...options.browserOptions,
+            });
 
-          // Create a single page that will be reused
-          const page = await browser.newPage();
+            browser._poolCreatedAt = Date.now();
+            browser._requestCount = 0;
 
-          return { browser, page };
-        } catch (error) {
-          console.error("Failed to create browser instance:", error);
-          throw error;
+            // Set up browser event handlers
+            browser.on("disconnected", () => {
+              this.emit("browserDisconnected", { browserId: browser.process()?.pid });
+            });
+
+            // Create page with optimizations
+            const page = await browser.newPage();
+
+            // Set up page error handlers
+            page.on("error", (err) => {
+              this.metrics.totalErrors++;
+              this.emit("pageError", { error: err });
+            });
+
+            page.on("pageerror", (err) => {
+              this.metrics.totalErrors++;
+              this.emit("pageError", { error: err });
+            });
+
+            // Performance optimizations
+            await page.setDefaultNavigationTimeout(options.navigationTimeout || 30000);
+            await page.setDefaultTimeout(options.pageTimeout || 30000);
+
+            // Block unnecessary resources for better performance
+            if (options.blockResources) {
+              await page.setRequestInterception(true);
+              page.on("request", (req) => {
+                const resourceType = req.resourceType();
+                if (["image", "stylesheet", "font", "media"].includes(resourceType)) {
+                  req.abort();
+                } else {
+                  req.continue();
+                }
+              });
+            }
+
+            // Set cache
+            await page.setCacheEnabled(options.cacheEnabled !== false);
+
+            const resource = { browser, page, createdAt: Date.now() };
+            this.emit("browserCreated", {
+              browserId: browser.process()?.pid,
+              duration: Date.now() - startTime
+            });
+
+            return resource;
+          } catch (error) {
+            retries--;
+            if (retries === 0) {
+              this.metrics.totalErrors++;
+              console.error("Failed to create browser after retries:", error);
+              throw error;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       },
+
       destroy: async (resource) => {
+        const startTime = Date.now();
         try {
-          if (resource.page && !resource.page.isClosed()) {
-            await resource.page.close();
+          // Clean up event listeners
+          if (resource.page) {
+            resource.page.removeAllListeners();
+            if (!resource.page.isClosed()) {
+              await resource.page.close().catch(() => {});
+            }
           }
-          if (resource.browser && resource.browser.isConnected()) {
-            await resource.browser.close();
+
+          if (resource.browser) {
+            resource.browser.removeAllListeners();
+            if (resource.browser.isConnected()) {
+              await resource.browser.close();
+            }
           }
+
+          this.emit("browserDestroyed", {
+            duration: Date.now() - startTime,
+            lifetime: Date.now() - resource.createdAt
+          });
         } catch (error) {
           console.error("Failed to destroy browser instance:", error);
+          this.metrics.totalErrors++;
         }
       },
+
       validate: async (resource) => {
         try {
           if (!resource.browser || !resource.browser.isConnected()) {
@@ -68,14 +154,45 @@ class BrowserPool {
             return false;
           }
 
-          // Recycle browsers after 10 minutes to prevent memory leaks
-          const age = Date.now() - resource.browser._poolCreatedAt;
-          if (age > 10 * 60 * 1000) {
+          const browser = resource.browser;
+
+          // Check age-based recycling
+          const age = Date.now() - browser._poolCreatedAt;
+          const maxAge = options.maxBrowserAge || 10 * 60 * 1000;
+          if (age > maxAge) {
+            this.metrics.totalRecycled++;
             return false;
           }
 
-          // Test if page is responsive
-          await resource.page.evaluate(() => true);
+          // Check request count-based recycling
+          const maxRequests = options.maxRequestsPerBrowser || 100;
+          if (browser._requestCount > maxRequests) {
+            this.metrics.totalRecycled++;
+            return false;
+          }
+
+          // Check memory usage if possible
+          if (browser.process()) {
+            try {
+              const memUsage = process.memoryUsage();
+              const maxMemory = options.maxMemoryMB || 500;
+              if (memUsage.heapUsed / 1024 / 1024 > maxMemory) {
+                this.metrics.totalRecycled++;
+                return false;
+              }
+            } catch (e) {
+              // Ignore memory check errors
+            }
+          }
+
+          // Test page responsiveness
+          await Promise.race([
+            resource.page.evaluate(() => true),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Page unresponsive")), 5000)
+            )
+          ]);
+
           return true;
         } catch (error) {
           return false;
@@ -99,17 +216,26 @@ class BrowserPool {
 
     this.pool = genericPool.createPool(factory, poolOptions);
 
-    // Handle pool errors
+    // Handle pool events
     this.pool.on("factoryCreateError", (err) => {
+      this.metrics.totalErrors++;
       console.error("Browser pool factory create error:", err);
+      this.emit("poolError", { type: "create", error: err });
     });
 
     this.pool.on("factoryDestroyError", (err) => {
+      this.metrics.totalErrors++;
       console.error("Browser pool factory destroy error:", err);
+      this.emit("poolError", { type: "destroy", error: err });
     });
 
-    // Pre-warm the pool
-    this.warmUp();
+    // Setup graceful shutdown
+    this.setupShutdownHandlers();
+
+    // Pre-warm if not disabled
+    if (options.warmUp !== false) {
+      this.warmUp().catch(console.error);
+    }
   }
 
   async warmUp() {
@@ -119,94 +245,156 @@ class BrowserPool {
 
       for (let i = 0; i < minSize; i++) {
         promises.push(
-          this.pool.acquire().then((resource) => {
-            this.pool.release(resource);
-          })
+          this.pool.acquire()
+            .then((resource) => this.pool.release(resource))
+            .catch((err) => {
+              console.warn(`Failed to warm up browser ${i + 1}:`, err.message);
+            })
         );
       }
 
-      await Promise.all(promises);
-      console.log(`Browser pool warmed up with ${minSize} instances`);
+      await Promise.allSettled(promises);
+      const succeeded = promises.filter(p => p.status === 'fulfilled').length;
+      console.log(`Browser pool warmed up with ${succeeded}/${minSize} instances`);
     } catch (error) {
       console.error("Failed to warm up browser pool:", error);
     }
   }
 
-  async acquire() {
+  async acquire(options = {}) {
     if (this.isShuttingDown) {
       throw new Error("Browser pool is shutting down");
     }
 
+    const startTime = Date.now();
+    let lastError;
+    const maxRetries = options.retries || 3;
+
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const resource = await this.pool.acquire();
+
+        // Increment request counter
+        resource.browser._requestCount++;
+
+        // Clear page state
+        await this.resetPage(resource.page, options.clearLevel || "fast");
+
+        this.metrics.totalAcquired++;
+        this.emit("browserAcquired", {
+          duration: Date.now() - startTime,
+          poolStats: this.getStats()
+        });
+
+        return resource;
+      } catch (error) {
+        lastError = error;
+        console.warn(`Failed to acquire browser (attempt ${i + 1}/${maxRetries}):`, error.message);
+
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        }
+      }
+    }
+
+    this.metrics.totalErrors++;
+    throw lastError || new Error("Failed to acquire browser from pool");
+  }
+
+  async resetPage(page, clearLevel = "fast") {
     try {
-      const resource = await this.pool.acquire();
+      switch (clearLevel) {
+        case "none":
+          // Do nothing
+          break;
 
-      // Only clear minimal state for performance
-      await this.fastClear(resource.page);
+        case "fast":
+          // Minimal reset for performance
+          await page.setViewport({ width: 1920, height: 1080 });
+          break;
 
-      return resource;
+        case "medium":
+          // Reset page but keep browser state
+          await Promise.all([
+            page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 5000 }),
+            page.setViewport({ width: 1920, height: 1080 }),
+          ]);
+          break;
+
+        case "full":
+          // Complete reset
+          await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 5000 });
+
+          // Clear cookies
+          const cookies = await page.cookies();
+          if (cookies.length > 0) {
+            await page.deleteCookie(...cookies);
+          }
+
+          // Clear storage
+          await page.evaluate(() => {
+            try {
+              localStorage.clear();
+              sessionStorage.clear();
+              // Clear IndexedDB
+              if (indexedDB && indexedDB.databases) {
+                indexedDB.databases().then(databases => {
+                  databases.forEach(db => indexedDB.deleteDatabase(db.name));
+                });
+              }
+            } catch (e) {}
+          });
+
+          // Reset settings
+          await Promise.all([
+            page.setViewport({ width: 1920, height: 1080 }),
+            page.setExtraHTTPHeaders({}),
+            page.setUserAgent(
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+          ]);
+          break;
+      }
     } catch (error) {
-      console.error("Failed to acquire browser from pool:", error);
-      throw error;
+      // Log but don't throw - page might still be usable
+      console.warn("Error resetting page state:", error.message);
     }
   }
 
-  async fastClear(page) {
+  async release(resource, options = {}) {
     try {
-      // Skip navigation to about:blank for performance
-      // Only reset critical settings that might affect next render
-      await page.setViewport({ width: 1920, height: 1080 });
-    } catch (error) {
-      // Ignore errors - page might still be usable
-    }
-  }
+      this.metrics.totalReleased++;
 
-  async clearPage(page) {
-    try {
-      // Navigate to blank page to clear any state
-      await page.goto("about:blank", { waitUntil: "domcontentloaded" });
-
-      // Clear cookies
-      const cookies = await page.cookies();
-      if (cookies.length > 0) {
-        await page.deleteCookie(...cookies);
+      // Mark as invalid if requested
+      if (options.destroy) {
+        await this.pool.destroy(resource);
+      } else {
+        await this.pool.release(resource);
       }
 
-      // Clear local storage and session storage
-      await page.evaluate(() => {
-        if (typeof localStorage !== 'undefined') localStorage.clear();
-        if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
-      });
-
-      // Reset viewport to default
-      await page.setViewport({ width: 1920, height: 1080 });
-
-      // Clear any extra HTTP headers
-      await page.setExtraHTTPHeaders({});
-
-      // Reset user agent
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      );
-    } catch (error) {
-      console.error("Error clearing page state:", error);
-      // Don't throw - page might still be usable
-    }
-  }
-
-  async release(resource) {
-    try {
-      // Skip clearing for performance - fastClear is done on acquire
-      await this.pool.release(resource);
+      this.emit("browserReleased", { poolStats: this.getStats() });
     } catch (error) {
       console.error("Error releasing browser to pool:", error);
+      this.metrics.totalErrors++;
 
-      // If release fails, try to destroy the resource
+      // Try to destroy the problematic resource
       try {
         await this.pool.destroy(resource);
       } catch (destroyError) {
         console.error("Failed to destroy problematic browser:", destroyError);
       }
     }
+  }
+
+  setupShutdownHandlers() {
+    const shutdown = async (signal) => {
+      console.log(`Received ${signal}, shutting down browser pool...`);
+      await this.drain();
+      process.exit(0);
+    };
+
+    process.once("SIGINT", () => shutdown("SIGINT"));
+    process.once("SIGTERM", () => shutdown("SIGTERM"));
   }
 
   async drain() {
@@ -216,6 +404,7 @@ class BrowserPool {
       await this.pool.drain();
       await this.pool.clear();
       console.log("Browser pool drained and cleared");
+      this.emit("poolDrained");
     } catch (error) {
       console.error("Error draining browser pool:", error);
     }
@@ -233,7 +422,38 @@ class BrowserPool {
       pending: this.pool.pending,
       max: this.pool.max,
       min: this.pool.min,
+      metrics: { ...this.metrics },
     };
+  }
+
+  // Health check method
+  async healthCheck() {
+    try {
+      const stats = this.getStats();
+      const health = {
+        status: "healthy",
+        stats,
+        uptime: process.uptime(),
+      };
+
+      // Check if pool is functioning
+      if (this.isShuttingDown) {
+        health.status = "shutting_down";
+      } else if (stats.available === 0 && stats.pending > 2) {
+        health.status = "degraded";
+        health.reason = "High pending requests";
+      } else if (this.metrics.totalErrors > 100) {
+        health.status = "degraded";
+        health.reason = "High error rate";
+      }
+
+      return health;
+    } catch (error) {
+      return {
+        status: "unhealthy",
+        error: error.message,
+      };
+    }
   }
 }
 

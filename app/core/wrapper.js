@@ -210,23 +210,35 @@ export class PuppeteerWrapper {
    * @param {PageConfig} config
    */
   async initialize() {
-    // BROWSER & PAGE INITIALIZATION
-    this.poolResource = await browserPool.acquire();
+    // BROWSER & PAGE INITIALIZATION - use "none" to avoid pool overriding our settings
+    this.poolResource = await browserPool.acquire({ clearLevel: "none" });
     this.browser = this.poolResource.browser;
     this.page = this.poolResource.page;
 
-    // Set scale factor & other things to simulate a real google chrome browser
-    await this.page.setJavaScriptEnabled(true);
-    await this.page.setCacheEnabled(this.device.cache);
-    await this.page.setUserAgent(this.userAgent);
-
-    await this.page.setExtraHTTPHeaders(this.headers);
-
+    // IMPORTANT: Set our API settings BEFORE any navigation
+    // Set viewport first (this is crucial for rendering)
     await this.page.setViewport({
       width: this.device.width,
       height: this.device.height,
       deviceScaleFactor: this.device.scale,
     });
+
+    // Set other page configuration
+    await this.page.setJavaScriptEnabled(this.device.javascriptEnabled);
+    await this.page.setCacheEnabled(this.device.cache);
+    await this.page.setUserAgent(this.device.userAgent);
+
+    // Set headers (including locale if provided)
+    const headers = { ...this.headers };
+    if (this.device.locale) {
+      headers['Accept-Language'] = this.device.locale;
+    }
+    await this.page.setExtraHTTPHeaders(headers);
+
+    // Set timezone if provided
+    if (this.device.timezone) {
+      await this.page.emulateTimezone(this.device.timezone);
+    }
   }
 
   async renderLazyAnimations() {
