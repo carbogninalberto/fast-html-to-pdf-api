@@ -45,6 +45,15 @@ npm run dev
 
 ## Build and Run in Docker
 
+### Quick usage
+
+Install the docker image from the Github registry of this repository
+
+```
+docker pull ghcr.io/carbogninalberto/fast-html-to-pdf-api:latest
+docker run -p 3000:3000 ghcr.io/carbogninalberto/fast-html-to-pdf-api:latest
+```
+
 ### Prerequisites
 
 - Docker installed on your system
