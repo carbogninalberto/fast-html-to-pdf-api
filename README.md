@@ -1,3 +1,12 @@
+<div align="center">
+  <img src="https://html2pdfapi.com/logo_dark.png" alt="HTML2PDF API Logo" style="background-color: black; padding: 20px; border-radius: 8px;" width="150">
+</div>
+
+---
+
+
+
+
 # Fast HTML to PDF, Screenshots, and Video API
 
 Welcome to the **Fast HTML to PDF, Screenshots, and Video API**! 🚀
