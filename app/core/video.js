@@ -2,7 +2,11 @@ import fs from "fs/promises";
 import { PuppeteerScreenRecorder } from "puppeteer-screen-recorder";
 
 export async function captureVideo(page, config) {
-  const recorder = new PuppeteerScreenRecorder(page, config.video);
+  const videoConfig = {
+    ...config.video,
+    ffmpeg_Path: process.env.FFMPEG_PATH || '/usr/bin/ffmpeg'
+  };
+  const recorder = new PuppeteerScreenRecorder(page, videoConfig);
 
   try {
     // Generate a random filename

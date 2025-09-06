@@ -30,6 +30,9 @@ EXPOSE 3000
 ENV HOST=0.0.0.0
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
+# SET FFMPEG_PATH
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
+
 # Create a non-root user
 RUN useradd -m appuser
 
