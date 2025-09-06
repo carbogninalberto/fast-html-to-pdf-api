@@ -23,7 +23,6 @@ class BrowserPool extends EventEmitter {
       "--disable-gpu",
       "--no-first-run",
       "--no-zygote",
-      "--single-process", // Better for containerized environments
       "--disable-background-timer-throttling",
       "--disable-backgrounding-occluded-windows",
       "--disable-renderer-backgrounding",
