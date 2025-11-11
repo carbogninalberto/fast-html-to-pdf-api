@@ -1,17 +1,23 @@
 import puppeteer from "puppeteer";
 import genericPool from "generic-pool";
 import { EventEmitter } from "events";
+import { exec, execSync } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 class BrowserPool extends EventEmitter {
   constructor() {
     super();
     this.pool = null;
     this.isShuttingDown = false;
+    this.cleanupInterval = null;
     this.metrics = {
       totalAcquired: 0,
       totalReleased: 0,
       totalErrors: 0,
       totalRecycled: 0,
+      tempFilesCleanedUp: 0,
     };
   }
 
@@ -21,14 +27,21 @@ class BrowserPool extends EventEmitter {
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
-      "--no-first-run",
+      "--single-process",
       "--no-zygote",
+      "--disable-web-security",
+      "--disable-features=VizDisplayCompositor",
       "--disable-background-timer-throttling",
       "--disable-backgrounding-occluded-windows",
       "--disable-renderer-backgrounding",
+      "--disk-cache-dir=/tmp/chrome-cache",
+      "--disk-cache-size=104857600", // 100MB max
+      "--media-cache-size=104857600",
+      "--aggressive-cache-discard",
+      "--temp-dir=/tmp",  // Explicitly set temp directory
+      "--no-first-run",
       "--disable-features=site-per-process",
       "--disable-blink-features=AutomationControlled",
-      "--disable-web-security",
       "--disable-features=IsolateOrigins,site-per-process",
       "--disable-hang-monitor",
       "--disable-default-apps",
@@ -133,6 +146,11 @@ class BrowserPool extends EventEmitter {
             }
           }
 
+          // Clean up Chrome temp files after browser destruction
+          this.cleanupChromeTempFiles().catch((err) => {
+            console.warn("Non-critical: Failed to clean Chrome temp files:", err.message);
+          });
+
           this.emit("browserDestroyed", {
             duration: Date.now() - startTime,
             lifetime: Date.now() - resource.createdAt
@@ -231,9 +249,73 @@ class BrowserPool extends EventEmitter {
     // Setup graceful shutdown
     this.setupShutdownHandlers();
 
+    // Start periodic cleanup of Chrome temp files
+    this.startPeriodicCleanup(options.cleanupInterval || 5 * 60 * 1000); // Default: 5 minutes
+
     // Pre-warm if not disabled
     if (options.warmUp !== false) {
       this.warmUp().catch(console.error);
+    }
+  }
+
+  /**
+   * Clean up Chrome temporary files
+   * Removes .com.google.Chrome.* files that are older than 5 minutes
+   */
+  async cleanupChromeTempFiles() {
+    try {
+      const commands = [
+        // Clean /tmp directory
+        'find /tmp -name ".com.google.Chrome.*" -type f -mmin +5 -delete 2>/dev/null || true',
+        // Clean user data directories
+        'find /tmp -name "puppeteer_dev_chrome_profile-*" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true',
+        // Clean Chrome crash dumps
+        'find /tmp -name "Crashpad" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true',
+      ];
+
+      for (const cmd of commands) {
+        try {
+          await execAsync(cmd);
+        } catch (err) {
+          // Ignore errors - files might not exist or already deleted
+        }
+      }
+
+      this.metrics.tempFilesCleanedUp++;
+      this.emit("tempFilesCleanedUp");
+    } catch (error) {
+      console.warn("Chrome temp file cleanup warning:", error.message);
+    }
+  }
+
+  /**
+   * Start periodic cleanup interval
+   */
+  startPeriodicCleanup(intervalMs) {
+    // Clear existing interval if any
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+
+    // Run cleanup immediately
+    this.cleanupChromeTempFiles().catch(() => {});
+
+    // Setup periodic cleanup
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupChromeTempFiles().catch(() => {});
+    }, intervalMs);
+
+    console.log(`Chrome temp file cleanup scheduled every ${intervalMs / 1000} seconds`);
+  }
+
+  /**
+   * Stop periodic cleanup
+   */
+  stopPeriodicCleanup() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      console.log("Periodic cleanup stopped");
     }
   }
 
@@ -400,8 +482,16 @@ class BrowserPool extends EventEmitter {
     this.isShuttingDown = true;
 
     try {
+      // Stop periodic cleanup
+      this.stopPeriodicCleanup();
+
+      // Drain and clear the pool
       await this.pool.drain();
       await this.pool.clear();
+
+      // Final cleanup of temp files
+      await this.cleanupChromeTempFiles();
+
       console.log("Browser pool drained and cleared");
       this.emit("poolDrained");
     } catch (error) {

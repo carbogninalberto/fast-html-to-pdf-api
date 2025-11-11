@@ -7,7 +7,7 @@ WORKDIR /usr/src/app
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 
-RUN apt-get update && apt-get install curl gnupg ffmpeg -y \
+RUN apt-get update && apt-get install curl gnupg ffmpeg findutils -y \
     && curl --location --silent https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
     && apt-get update \
@@ -22,6 +22,14 @@ RUN npm install --os=linux --cpu=x64 sharp
 
 # Copy the rest of your app's source code
 COPY . .
+
+# Create cleanup script for Chrome temp files
+RUN echo '#!/bin/sh\n\
+# Clean Chrome temporary files\n\
+find /tmp -name ".com.google.Chrome.*" -type f -mmin +5 -delete 2>/dev/null || true\n\
+find /tmp -name "puppeteer_dev_chrome_profile-*" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true\n\
+find /tmp -name "Crashpad" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true\n\
+' > /usr/local/bin/cleanup-chrome-temp.sh && chmod +x /usr/local/bin/cleanup-chrome-temp.sh
 
 # Expose the port your app runs on
 EXPOSE 3000
