@@ -6,6 +6,7 @@ import { z } from "zod";
 export function validateConfig(config) {
   const configSchema = z.object({
     url: z.string().url().optional(),
+    html: z.string().optional(),
     type: z.enum(["image", "pdf", "video", "html"]),
     headers: z.record(z.string()).optional(),
     render: z
@@ -138,6 +139,9 @@ export function validateConfig(config) {
         timeout: z.number().positive().default(30000),
       })
       .optional(),
+  }).refine((data) => data.url || data.html, {
+    message: "Either 'url' or 'html' must be provided",
+    path: ["url", "html"],
   });
 
   try {

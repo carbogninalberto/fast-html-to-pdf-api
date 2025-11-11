@@ -51,6 +51,7 @@ export class PuppeteerWrapper {
 
     // generation config
     this.url = config?.url ?? "";
+    this.html = config?.html ?? "";
     this.type = config?.type ?? "image";
 
     // custom headers
@@ -288,7 +289,20 @@ export class PuppeteerWrapper {
       throw new Error("Page not initialized. Call initialize() first.");
     }
 
-    await this.page.goto(this.url, { waitUntil: this.render.waitUntil });
+    // Load either URL or HTML content
+    if (this.html) {
+      // When using setContent with HTML, we can't use networkidle0/networkidle2
+      // as there are no network requests, so we use 'load' or 'domcontentloaded'
+      const waitUntil = this.render.waitUntil === 'networkidle0' || this.render.waitUntil === 'networkidle2'
+        ? 'load'
+        : this.render.waitUntil;
+      await this.page.setContent(this.html, { waitUntil });
+    } else if (this.url) {
+      await this.page.goto(this.url, { waitUntil: this.render.waitUntil });
+    } else {
+      throw new Error("Either URL or HTML content must be provided");
+    }
+
     if (this.render.waitTime && this.render.waitTime >= 0) {
       await new Promise((resolve) => setTimeout(resolve, this.render.waitTime));
     }
@@ -304,7 +318,7 @@ export class PuppeteerWrapper {
     let content;
     let contentType;
     let filename;
-    let host = new URL(this.url).hostname;
+    let host = this.url ? new URL(this.url).hostname : 'html-content';
 
     // set config with all the properties of this class
     const config = {

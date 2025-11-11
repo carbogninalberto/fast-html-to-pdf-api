@@ -196,12 +196,16 @@
     "schemas": {
       "RenderRequest": {
         "type": "object",
-        "required": ["url", "type"],
+        "required": ["type"],
         "properties": {
           "url": {
             "type": "string",
             "format": "uri",
-            "description": "URL of the web page to render"
+            "description": "URL of the web page to render. Either 'url' or 'html' must be provided."
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML content to render directly. Either 'url' or 'html' must be provided."
           },
           "type": {
             "type": "string",
