@@ -1,30 +1,64 @@
-Html2pdf API Software License
-Copyright (c) 2024 Bakney srl
-Non-Commercial Use
-This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License for non-commercial use. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
-Commercial Use
-For any commercial use, including but not limited to use in any application or service that generates revenue, or by any entity that is not a registered non-profit organization, a commercial license must be obtained from Bakney srl. The following one-time fee structure applies, based on the licensee's total annual revenue from the last fiscal year as reported in their balance sheet:
+Html2pdf API Software License Agreement
+Version 1.0 — Effective Date: 2026-01-21
+Copyright © 2024 Bakney S.r.l. All rights reserved.
+This Software License Agreement ("Agreement") is a legal contract between the individual or entity acquiring the license ("Licensee") and Bakney S.r.l., a company incorporated under Italian law with registered office in Monteforte d'Alpone, Italy ("Licensor"). By downloading, installing, copying, or otherwise using the Software, Licensee agrees to be bound by the terms of this Agreement.
 
-Annual revenue up to $100,000: $250 license fee
-Annual revenue $100,001 to $1,000,000: $1,000 license fee
-Annual revenue $1,000,001 to $10,000,000: $5,000 license fee
-Annual revenue over $10,000,000: $10,000 license fee
+1. Definitions
+1.1 "Software" means the Html2pdf API, including all source code, object code, documentation, updates, and any associated materials provided by Licensor.
+1.2 "Annual Revenue" means the Licensee's gross revenue for the most recently completed fiscal year, as reported in audited financial statements or, if unavailable, in official tax filings.
+1.3 "Commercial Use" means any use of the Software (a) by any entity that is not a registered non-profit organization, or (b) in connection with any activity intended for or directed toward commercial advantage or monetary compensation.
+1.4 "Competing Service" means any product, service, or offering whose primary function is to convert HTML to PDF, generate screenshots or images from HTML, render web pages to document formats, or provide substantially similar functionality to the Software.
+1.5 "Effective Date" means the date on which Licensee first downloads, installs, or uses the Software, or the date of payment of applicable license fees, whichever occurs first.
 
-All fees are subject to applicable taxes.
-To obtain a commercial license, contact Bakney srl at info@bakney.com.
-Scope of Use
-Upon payment of the appropriate license fee, the licensee is granted the right to use the software extensively within their business operations. This includes, but is not limited to, integration into multiple products or services, use across various departments, and deployment on multiple servers or instances, as long as such use is within the licensee's organization.
-Restrictions on Use
-The licensee is expressly prohibited from using the software to provide a direct service that primarily consists of rendering HTML to PDF, creating screenshots, generating videos from HTML, or any similar functionality that directly replicates the core features of the Html2pdf API. This restriction applies regardless of whether such services are offered for free or for a fee.
-Modifications
-The software may be adapted only for the purpose of internal business needs of the licensed entity. No other modifications or derivative works are permitted without explicit written permission from Bakney srl.
-No Warranty or Support
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-No support or maintenance is provided with this license.
-License Changes
-Bakney srl reserves the right to change the terms of this license for future versions of the software. Each version of the software will be bound by the license terms in effect at the time of its release.
-Definitions
+2. License Grant
+2.1 Non-Commercial License
+Subject to the terms of this Agreement, Licensor grants to Licensee a non-exclusive, non-transferable, worldwide license to use, copy, and distribute the Software solely for non-commercial purposes. This non-commercial license is governed by the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License (CC BY-NC-ND 4.0), available at https://creativecommons.org/licenses/by-nc-nd/4.0/. In the event of conflict between this Agreement and the CC BY-NC-ND 4.0 license, this Agreement shall prevail.
+2.2 Commercial License
+For Commercial Use, Licensee must obtain a commercial license by paying the applicable one-time fee based on Licensee's Annual Revenue:
+Annual Revenue (EUR)License Fee (EUR)Up to €100,000€250€100,001 – €1,000,000€1,000€1,000,001 – €10,000,000€5,000Over €10,000,000€10,000
+All fees are exclusive of applicable taxes, which shall be borne by Licensee. Upon payment, Licensor grants Licensee a perpetual, non-exclusive, non-transferable, worldwide license to use, copy, and modify the Software for internal business purposes, including integration into Licensee's products and services, deployment across multiple servers, and use by Licensee's employees and contractors acting on Licensee's behalf.
+2.3 Revenue Verification
+Licensor reserves the right to request reasonable documentation to verify Licensee's Annual Revenue for purposes of determining the applicable license fee. Licensee shall provide such documentation within thirty (30) days of request. If Licensee's Annual Revenue increases to a higher tier after initial license purchase, Licensee shall pay the difference to obtain the appropriate license within sixty (60) days of the end of the fiscal year in which such increase occurs.
 
-"Software" refers to the Html2pdf API and any associated code, documentation, or materials provided by Bakney srl.
-"Annual revenue" refers to the total revenue as reported in the licensee's most recent annual balance sheet or equivalent financial statement.
-"Direct service" means a primary business offering or product that substantially relies on or replicates the core functionality of the Html2pdf API.
+3. Restrictions
+3.1 Licensee shall not use the Software, in whole or in part, to develop, operate, or offer a Competing Service, whether offered for compensation or free of charge.
+3.2 Licensee shall not sublicense, rent, lease, sell, or otherwise transfer the Software or any rights therein to any third party, except as expressly permitted herein.
+3.3 Licensee shall not remove, alter, or obscure any copyright, trademark, or other proprietary notices contained in the Software.
+3.4 Modifications to the Software are permitted solely for Licensee's internal business purposes under a commercial license. Licensee shall not distribute modified versions of the Software without prior written consent from Licensor.
+
+4. Intellectual Property
+The Software and all copies thereof are proprietary to Licensor and title thereto remains exclusively with Licensor. All rights in the Software not specifically granted in this Agreement are reserved to Licensor. Licensee acknowledges that the Software contains trade secrets and confidential information of Licensor.
+
+5. Disclaimer of Warranties
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. LICENSOR EXPRESSLY DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WITHOUT LIMITATION ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE OR UNINTERRUPTED.
+
+6. Limitation of Liability
+6.1 IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION LOSS OF PROFITS, DATA, BUSINESS, OR GOODWILL, ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT OR THE USE OF THE SOFTWARE, EVEN IF LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+6.2 LICENSOR'S TOTAL CUMULATIVE LIABILITY ARISING OUT OF OR RELATED TO THIS AGREEMENT SHALL NOT EXCEED THE AMOUNT OF LICENSE FEES ACTUALLY PAID BY LICENSEE TO LICENSOR IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM.
+6.3 The limitations in this Section 6 shall apply to the fullest extent permitted by applicable law, regardless of the form of action, whether in contract, tort (including negligence), strict liability, or otherwise.
+
+7. Indemnification
+Licensee shall indemnify, defend, and hold harmless Licensor and its officers, directors, employees, and agents from and against any claims, damages, losses, liabilities, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to (a) Licensee's use of the Software, (b) Licensee's breach of this Agreement, or (c) Licensee's violation of any applicable law or third-party rights.
+
+8. Term and Termination
+8.1 This Agreement is effective as of the Effective Date and shall continue until terminated.
+8.2 Licensor may terminate this Agreement immediately upon written notice if Licensee breaches any provision of this Agreement and fails to cure such breach within thirty (30) days after receipt of written notice thereof.
+8.3 Upon termination, Licensee shall immediately cease all use of the Software and destroy all copies thereof in Licensee's possession or control. Sections 4, 5, 6, 7, 9, 10, and 11 shall survive termination.
+
+9. Governing Law and Jurisdiction
+This Agreement shall be governed by and construed in accordance with the laws of Italy, without regard to its conflict of laws principles. Any dispute arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts of Verona, Italy.
+
+10. General Provisions
+10.1 Entire Agreement. This Agreement constitutes the entire agreement between the parties concerning the subject matter hereof and supersedes all prior agreements, understandings, and communications, whether written or oral.
+10.2 Severability. If any provision of this Agreement is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect, and the invalid or unenforceable provision shall be modified to the minimum extent necessary to make it valid and enforceable.
+10.3 Waiver. No failure or delay by Licensor in exercising any right under this Agreement shall operate as a waiver thereof.
+10.4 Assignment. Licensee may not assign or transfer this Agreement or any rights hereunder without the prior written consent of Licensor. Licensor may assign this Agreement without restriction.
+10.5 Notices. All notices under this Agreement shall be in writing and sent to info@bakney.com for Licensor, or to the email address provided by Licensee at the time of license purchase.
+10.6 Amendments. Licensor reserves the right to modify the terms of this Agreement for future versions of the Software. Each version of the Software shall be governed by the Agreement in effect at the time of its release.
+
+11. Contact Information
+For commercial licensing inquiries or questions regarding this Agreement:
+Bakney S.r.l.
+Email: info@bakney.com
+
+BY USING THE SOFTWARE, LICENSEE ACKNOWLEDGES THAT IT HAS READ THIS AGREEMENT, UNDERSTANDS IT, AND AGREES TO BE BOUND BY ITS TERMS AND CONDITIONS.
