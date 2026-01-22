@@ -139,4 +139,23 @@ describe("validateConfig", () => {
     });
     expect(result.error).toBe(true);
   });
+
+  it("should handle non-ZodError exceptions in parse", () => {
+    // A Proxy that throws TypeError when Zod tries to access properties
+    const config = new Proxy({}, {
+      get(target, prop) {
+        if (prop === "type") throw new TypeError("property access failed");
+        return undefined;
+      },
+      ownKeys() {
+        throw new TypeError("cannot enumerate");
+      },
+      getOwnPropertyDescriptor() {
+        throw new TypeError("cannot describe");
+      },
+    });
+    const result = validateConfig(config);
+    expect(result.error).toBe(true);
+    expect(result.message).toBeDefined();
+  });
 });
