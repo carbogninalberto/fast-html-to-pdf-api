@@ -25,7 +25,6 @@ class BrowserPool extends EventEmitter {
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
-      "--single-process",
       "--no-zygote",
       "--disable-web-security",
       "--disable-features=VizDisplayCompositor",
