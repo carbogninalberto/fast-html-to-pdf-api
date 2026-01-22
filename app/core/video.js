@@ -27,12 +27,12 @@ export async function captureVideo(page, config) {
     await recorder.stop();
 
     const videoBuffer = await fs.readFile(videoPath);
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     return videoBuffer;
   } catch (error) {
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     console.error("Error during video capture:", error);
     throw error;
-  } finally {
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
