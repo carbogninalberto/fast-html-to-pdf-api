@@ -8,6 +8,7 @@ import browserPool from "./core/browser-pool.js";
 const fastify = Fastify({
   logger: true,
   pluginTimeout: 60000,
+  bodyLimit: 50 * 1024 * 1024, // 50MB
 });
 
 // Load swagger.json
