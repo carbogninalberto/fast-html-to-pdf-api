@@ -1,6 +1,4 @@
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
+import { PassThrough } from "stream";
 import { PuppeteerScreenRecorder } from "puppeteer-screen-recorder";
 
 export async function captureVideo(page, config) {
@@ -10,11 +8,12 @@ export async function captureVideo(page, config) {
   };
   const recorder = new PuppeteerScreenRecorder(page, videoConfig);
 
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "video-"));
-  const videoPath = path.join(tmpDir, `capture.mp4`);
-
   try {
-    await recorder.start(videoPath);
+    const stream = new PassThrough();
+    const chunks = [];
+    stream.on("data", (chunk) => chunks.push(chunk));
+
+    await recorder.startStream(stream);
 
     if (config.render.scroll.animate) {
       await performAutoScroll(page, config.render.scroll.duration);
@@ -26,11 +25,8 @@ export async function captureVideo(page, config) {
 
     await recorder.stop();
 
-    const videoBuffer = await fs.readFile(videoPath);
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-    return videoBuffer;
+    return Buffer.concat(chunks);
   } catch (error) {
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     console.error("Error during video capture:", error);
     throw error;
   }
