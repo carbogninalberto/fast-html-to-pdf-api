@@ -10,6 +10,8 @@ class BrowserPool extends EventEmitter {
     this.pool = null;
     this.isShuttingDown = false;
     this.cleanupInterval = null;
+    this.scalingInterval = null;
+    this.initialMax = 10;
     this.metrics = {
       totalAcquired: 0,
       totalReleased: 0,
@@ -243,8 +245,13 @@ class BrowserPool extends EventEmitter {
       this.emit("poolError", { type: "destroy", error: err });
     });
 
+    this.initialMax = poolOptions.max;
+
     // Setup graceful shutdown
     this.setupShutdownHandlers();
+
+    // Start dynamic pool scaling check
+    this.startDynamicScaling();
 
     // Start periodic cleanup of Chrome temp files
     this.startPeriodicCleanup(options.cleanupInterval || 5 * 60 * 1000); // Default: 5 minutes
@@ -326,6 +333,34 @@ class BrowserPool extends EventEmitter {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
       console.log("Periodic cleanup stopped");
+    }
+  }
+
+  startDynamicScaling() {
+    this.scalingInterval = setInterval(() => {
+      if (!this.pool || this.isShuttingDown) return;
+
+      const max = this.pool.max;
+      const borrowed = this.pool.borrowed;
+      const threshold = max - Math.floor(max / 5);
+
+      if (borrowed >= threshold) {
+        // Near limit: increase by 10
+        this.pool.max = max + 10;
+        console.log(`Pool scaled up: max ${max} -> ${this.pool.max}`);
+      } else if (max > this.initialMax && borrowed < max - 10) {
+        // Under-utilized: decrease by 10 (but not below initial max)
+        const newMax = Math.max(max - 10, this.initialMax);
+        this.pool.max = newMax;
+        console.log(`Pool scaled down: max ${max} -> ${newMax}`);
+      }
+    }, 10000);
+  }
+
+  stopDynamicScaling() {
+    if (this.scalingInterval) {
+      clearInterval(this.scalingInterval);
+      this.scalingInterval = null;
     }
   }
 
@@ -459,7 +494,8 @@ class BrowserPool extends EventEmitter {
     this.isShuttingDown = true;
 
     try {
-      // Stop periodic cleanup
+      // Stop scaling and cleanup
+      this.stopDynamicScaling();
       this.stopPeriodicCleanup();
 
       // Drain and clear the pool
