@@ -1,4 +1,6 @@
 import fs from "fs/promises";
+import os from "os";
+import path from "path";
 import { PuppeteerScreenRecorder } from "puppeteer-screen-recorder";
 
 export async function captureVideo(page, config) {
@@ -8,16 +10,10 @@ export async function captureVideo(page, config) {
   };
   const recorder = new PuppeteerScreenRecorder(page, videoConfig);
 
-  try {
-    // Generate a random filename
-    const randomFileName = `video_${Math.random()
-      .toString(36)
-      .substring(7)}.mp4`;
-    // assure ./screenshots/video/ exists
-    await fs.mkdir("./screenshots/video", { recursive: true });
-    const videoPath = `./screenshots/video/${randomFileName}`;
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "video-"));
+  const videoPath = path.join(tmpDir, `capture.mp4`);
 
-    // Start the recording with the temporary file
+  try {
     await recorder.start(videoPath);
 
     if (config.render.scroll.animate) {
@@ -30,25 +26,13 @@ export async function captureVideo(page, config) {
 
     await recorder.stop();
 
-    // Read the video file
     const videoBuffer = await fs.readFile(videoPath);
-
-    // Schedule file deletion after 10 seconds
-    setTimeout(async () => {
-      try {
-        await fs.unlink(videoPath);
-      } catch (error) {
-        console.error(
-          `Error deleting temporary video file ${videoPath}:`,
-          error
-        );
-      }
-    }, 10000);
-
     return videoBuffer;
   } catch (error) {
     console.error("Error during video capture:", error);
     throw error;
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
