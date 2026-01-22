@@ -1,17 +1,25 @@
 export async function captureHTML(page) {
   // Get the full HTML content of the page with embedded CSS, JS, and images
   const htmlContent = await page.evaluate(async () => {
-    // Function to fetch and encode resources
+    // Resource cache to avoid re-fetching the same URLs
+    const resourceCache = new Map();
+
+    // Function to fetch and encode resources with caching
     const fetchAndEncode = async (url) => {
+      if (resourceCache.has(url)) {
+        return resourceCache.get(url);
+      }
       try {
         const response = await fetch(url);
         const blob = await response.blob();
-        return new Promise((resolve, reject) => {
+        const result = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
+        resourceCache.set(url, result);
+        return result;
       } catch (error) {
         console.error(`Failed to fetch and encode: ${url}`, error);
         return url; // Return original URL if fetching fails
