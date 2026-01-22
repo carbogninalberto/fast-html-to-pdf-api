@@ -7,6 +7,7 @@ import logger from "../utils/logger.js";
 import {
   BROWSER_LAUNCH_TIMEOUT_MS, BROWSER_MAX_RETRIES, BROWSER_RETRY_DELAY_MS,
   BROWSER_MAX_AGE_MS, BROWSER_MAX_REQUESTS, BROWSER_MAX_MEMORY_MB,
+  BROWSER_PAGE_TIMEOUT_MS,
   POOL_DESTROY_TIMEOUT_MS, POOL_EVICTION_INTERVAL_MS,
   POOL_SCALE_INCREMENT, POOL_SCALE_CHECK_INTERVAL_MS, POOL_IDLE_SCALE_DOWN_MS,
   CLEANUP_INTERVAL_MS, TEMP_FILE_MAX_AGE_MS, TEMP_DIR_MAX_AGE_MS,
@@ -280,9 +281,6 @@ class BrowserPool extends EventEmitter {
 
     this.initialMax = poolOptions.max;
 
-    // Setup graceful shutdown
-    this.setupShutdownHandlers();
-
     // Start dynamic pool scaling check
     this.startDynamicScaling();
 
@@ -425,8 +423,8 @@ class BrowserPool extends EventEmitter {
         );
       }
 
-      await Promise.allSettled(promises);
-      const succeeded = promises.filter(p => p.status === 'fulfilled').length;
+      const results = await Promise.allSettled(promises);
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
       logger.info(`Browser pool warmed up with ${succeeded}/${minSize} instances`);
     } catch (error) {
       logger.error({ err: error }, "browser-pool: failed to warm up pool");
@@ -540,17 +538,6 @@ class BrowserPool extends EventEmitter {
         logger.error({ err: destroyError }, "browser-pool: failed to destroy problematic browser");
       }
     }
-  }
-
-  setupShutdownHandlers() {
-    const shutdown = async (signal) => {
-      logger.info(`Received ${signal}, shutting down browser pool...`);
-      await this.drain();
-      process.exit(0);
-    };
-
-    process.once("SIGINT", () => shutdown("SIGINT"));
-    process.once("SIGTERM", () => shutdown("SIGTERM"));
   }
 
   /**
