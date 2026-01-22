@@ -1,21 +1,92 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Puppeteer Wrapper API",
+    "title": "Fast HTML to PDF, Screenshots, and Video API",
     "version": "1.0.0",
-    "description": "API for rendering web pages using Puppeteer"
+    "description": "A high-performance rendering API for capturing web pages as images, PDFs, videos, or self-contained HTML documents."
   },
   "servers": [
     {
-      "url": "http://localhost:3000/v1",
+      "url": "http://localhost:3000",
       "description": "Local development server"
     }
   ],
   "paths": {
+    "/": {
+      "get": {
+        "summary": "API info",
+        "description": "Returns basic API information",
+        "responses": {
+          "200": {
+            "description": "API info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "info": {
+                      "type": "string",
+                      "example": "Html2Pdf API"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "summary": "Ping",
+        "description": "Simple connectivity check",
+        "responses": {
+          "200": {
+            "description": "Returns pong",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "pong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns server health status including browser pool statistics and memory usage",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Server is degraded (no browsers available)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/render": {
       "post": {
         "summary": "Render a web page",
-        "description": "Capture a web page as an image, PDF, video, or HTML",
+        "description": "Capture a web page as an image, PDF, video, or self-contained HTML. Either 'url' or 'html' must be provided in the request body.",
         "requestBody": {
           "required": true,
           "content": {
@@ -28,59 +99,51 @@
         },
         "responses": {
           "200": {
-            "description": "Successful response",
-            "content": {
-              "image/png": {
+            "description": "Rendered output. Content-Type depends on the requested type and format.",
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment header with generated filename",
                 "schema": {
                   "type": "string",
-                  "format": "binary"
+                  "example": "attachment; filename=\"image-example.com-1706000000000.png\""
                 }
               },
-              "image/jpeg": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "image/webp": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "image/gif": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "image/avif": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "application/pdf": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "video/mp4": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "text/html": {
+              "X-Browser-Pool-Stats": {
+                "description": "JSON object with browser pool statistics",
                 "schema": {
                   "type": "string"
                 }
               }
+            },
+            "content": {
+              "image/png": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "image/jpeg": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "image/webp": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "image/gif": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "image/avif": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "application/pdf": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "video/mp4": {
+                "schema": { "type": "string", "format": "binary" }
+              },
+              "text/html": {
+                "schema": { "type": "string" }
+              }
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -102,74 +165,52 @@
         }
       },
       "get": {
-        "summary": "Render a web page (GET method)",
-        "description": "Capture a web page as an image, PDF, video, or HTML using GET method",
+        "summary": "Render a web page (GET)",
+        "description": "Same as POST /render but accepts a JSON-encoded configuration object as a query parameter.",
         "parameters": [
           {
             "name": "config",
             "in": "query",
             "required": true,
+            "description": "URL-encoded JSON configuration object (same schema as POST body)",
             "schema": {
-              "type": "string",
-              "description": "JSON-encoded configuration object"
-            }
+              "type": "string"
+            },
+            "example": "{\"url\":\"https://example.com\",\"type\":\"image\"}"
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "Rendered output",
             "content": {
               "image/png": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "image/jpeg": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "image/webp": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "image/gif": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "image/avif": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "application/pdf": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "video/mp4": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               },
               "text/html": {
-                "schema": {
-                  "type": "string"
-                }
+                "schema": { "type": "string" }
               }
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Validation error or malformed JSON",
             "content": {
               "application/json": {
                 "schema": {
@@ -210,346 +251,391 @@
           "type": {
             "type": "string",
             "enum": ["image", "pdf", "video", "html"],
-            "description": "Type of capture to perform"
+            "description": "Output type to produce"
           },
           "headers": {
             "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Custom headers to be sent with the request"
+            "additionalProperties": { "type": "string" },
+            "description": "Custom HTTP headers sent when navigating to the URL"
           },
           "render": {
-            "type": "object",
-            "properties": {
-              "block": {
-                "type": "object",
-                "properties": {
-                  "cookies": {
-                    "type": "boolean",
-                    "description": "Whether to block cookies"
-                  },
-                  "ads": {
-                    "type": "boolean",
-                    "description": "Whether to block ads"
-                  },
-                  "trackers": {
-                    "type": "boolean",
-                    "description": "Whether to block trackers"
-                  },
-                  "banners": {
-                    "type": "boolean",
-                    "description": "Whether to block banners"
-                  }
-                }
-              },
-              "waitTime": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "Time to wait after page load before capturing (in milliseconds)"
-              },
-              "timeout": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "Timeout for the rendering process (in milliseconds)"
-              },
-              "fullPage": {
-                "type": "boolean",
-                "description": "Whether to capture the full page or just the viewport"
-              },
-              "triggerLazyAnimations": {
-                "type": "boolean",
-                "description": "Whether to trigger lazy animations before capturing"
-              },
-              "scroll": {
-                "type": "object",
-                "properties": {
-                  "position": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "Scroll position of the page in pixels"
-                  },
-                  "animate": {
-                    "type": "boolean",
-                    "description": "Whether to animate the scroll"
-                  },
-                  "duration": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "Duration of scroll animation (in milliseconds)"
-                  },
-                  "animation": {
-                    "type": "string",
-                    "description": "Type of scroll animation"
-                  }
-                }
-              },
-              "waitUntil": {
-                "type": "string",
-                "enum": [
-                  "networkidle0",
-                  "domcontentloaded",
-                  "load",
-                  "networkidle2"
-                ],
-                "description": "Puppeteer's waitUntil option"
-              }
-            }
+            "$ref": "#/components/schemas/RenderOptions"
           },
           "device": {
-            "type": "object",
-            "properties": {
-              "userAgent": {
-                "type": "string",
-                "description": "User agent string to use"
-              },
-              "scale": {
-                "type": "number",
-                "minimum": 0,
-                "description": "Device scale factor"
-              },
-              "width": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "Width of the viewport in pixels"
-              },
-              "height": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "Height of the viewport in pixels"
-              },
-              "locale": {
-                "type": "string",
-                "description": "Locale to use"
-              },
-              "timezone": {
-                "type": "string",
-                "description": "Timezone to use"
-              },
-              "cache": {
-                "type": "boolean",
-                "description": "Whether to enable caching"
-              },
-              "cacheKey": {
-                "type": "string",
-                "description": "Cache key to use"
-              }
-            }
+            "$ref": "#/components/schemas/DeviceOptions"
           },
           "image": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": ["png", "jpeg", "webp", "gif", "avif"],
-                "description": "Image format"
-              },
-              "compression": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9,
-                "description": "Compression level (0-9, where 0 is fastest and 9 is slowest)"
-              },
-              "smooth": {
-                "type": "boolean",
-                "description": "Whether to use adaptive filtering"
-              },
-              "quality": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 100,
-                "description": "Image quality (0-100)"
-              },
-              "resize": {
-                "type": "number",
-                "minimum": 0.1,
-                "maximum": 3,
-                "description": "Resize factor"
-              },
-              "rotate": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 360,
-                "description": "Rotation angle in degrees"
-              },
-              "roundedBorders": {
-                "oneOf": [
-                  { "type": "boolean" },
-                  { "type": "number", "minimum": 0 }
-                ],
-                "description": "Whether to add rounded borders or border radius in pixels"
-              },
-              "padding": {
-                "type": "number",
-                "minimum": 0,
-                "description": "Padding in pixels"
-              },
-              "crop": {
-                "type": "object",
-                "properties": {
-                  "left": {
-                    "type": "number",
-                    "minimum": 0
-                  },
-                  "top": {
-                    "type": "number",
-                    "minimum": 0
-                  },
-                  "width": {
-                    "type": "number",
-                    "minimum": 1
-                  },
-                  "height": {
-                    "type": "number",
-                    "minimum": 1
-                  }
-                },
-                "description": "Crop area"
-              }
-            }
+            "$ref": "#/components/schemas/ImageOptions"
           },
           "video": {
+            "$ref": "#/components/schemas/VideoOptions"
+          },
+          "pdf": {
+            "$ref": "#/components/schemas/PdfOptions"
+          }
+        }
+      },
+      "RenderOptions": {
+        "type": "object",
+        "properties": {
+          "block": {
             "type": "object",
             "properties": {
-              "fps": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "Frames per second for video capture"
-              },
-              "followNewTab": {
+              "cookies": {
                 "type": "boolean",
-                "description": "Whether to follow new tabs during video capture"
+                "description": "Block cookie consent banners"
               },
-              "videoFrame": {
-                "type": "object",
-                "properties": {
-                  "width": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "height": {
-                    "type": "integer",
-                    "minimum": 1
-                  }
-                },
-                "description": "Video frame dimensions"
+              "ads": {
+                "type": "boolean",
+                "description": "Block ads"
               },
-              "videoCrf": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 51,
-                "description": "Constant Rate Factor for video encoding"
+              "trackers": {
+                "type": "boolean",
+                "description": "Block trackers"
               },
-              "videoCodec": {
-                "type": "string",
-                "enum": ["libx264"],
-                "description": "Video codec to use"
-              },
-              "videoPreset": {
-                "type": "string",
-                "enum": [
-                  "ultrafast",
-                  "superfast",
-                  "veryfast",
-                  "faster",
-                  "fast",
-                  "medium",
-                  "slow",
-                  "slower",
-                  "veryslow"
-                ],
-                "description": "Video encoding preset"
-              },
-              "videoBitrate": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "Video bitrate in kbps"
-              },
-              "recordDurationLimit": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "Maximum recording duration in seconds"
+              "banners": {
+                "type": "boolean",
+                "description": "Block banners"
               }
             }
           },
-          "pdf": {
+          "waitTime": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Time to wait after page load before capturing (ms)"
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Timeout for the rendering process (ms)"
+          },
+          "fullPage": {
+            "type": "boolean",
+            "description": "Capture the full scrollable page instead of just the viewport"
+          },
+          "triggerLazyAnimations": {
+            "type": "boolean",
+            "description": "Trigger lazy-loaded animations before capturing"
+          },
+          "scroll": {
             "type": "object",
             "properties": {
-              "scale": {
-                "type": "number",
-                "minimum": 0,
-                "description": "Scale of the webpage rendering"
-              },
-              "displayHeaderFooter": {
-                "type": "boolean",
-                "description": "Whether to display header and footer"
-              },
-              "headerTemplate": {
-                "type": "string",
-                "description": "HTML template for the print header"
-              },
-              "footerTemplate": {
-                "type": "string",
-                "description": "HTML template for the print footer"
-              },
-              "printBackground": {
-                "type": "boolean",
-                "description": "Whether to print background graphics"
-              },
-              "landscape": {
-                "type": "boolean",
-                "description": "Whether to use landscape orientation"
-              },
-              "pageRanges": {
-                "type": "string",
-                "description": "Paper ranges to print, e.g., '1-5, 8, 11-13'"
-              },
-              "format": {
-                "type": "string",
-                "description": "Paper format (e.g., 'A4', 'Letter')"
-              },
-              "width": {
-                "type": "string",
-                "description": "Paper width, accepts values labeled with units"
-              },
-              "height": {
-                "type": "string",
-                "description": "Paper height, accepts values labeled with units"
-              },
-              "margin": {
-                "type": "object",
-                "properties": {
-                  "top": {
-                    "type": "string",
-                    "description": "Top margin, accepts values labeled with units"
-                  },
-                  "right": {
-                    "type": "string",
-                    "description": "Right margin, accepts values labeled with units"
-                  },
-                  "bottom": {
-                    "type": "string",
-                    "description": "Bottom margin, accepts values labeled with units"
-                  },
-                  "left": {
-                    "type": "string",
-                    "description": "Left margin, accepts values labeled with units"
-                  }
-                }
-              },
-              "preferCSSPageSize": {
-                "type": "boolean",
-                "description": "Whether to prefer page size as defined by CSS"
-              },
-              "omitBackground": {
-                "type": "boolean",
-                "description": "Whether to hide default white background and allow capturing screenshots with transparency"
-              },
-              "timeout": {
+              "position": {
                 "type": "integer",
                 "minimum": 0,
-                "description": "Timeout in milliseconds"
+                "description": "Scroll to this position in pixels before capturing"
+              },
+              "animate": {
+                "type": "boolean",
+                "description": "Animate the scroll (used for video recording)"
+              },
+              "duration": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Scroll animation duration (ms)"
+              },
+              "animation": {
+                "type": "string",
+                "description": "Scroll animation easing type"
               }
+            }
+          },
+          "waitUntil": {
+            "type": "string",
+            "enum": ["networkidle0", "domcontentloaded", "load", "networkidle2"],
+            "description": "When to consider the page loaded"
+          }
+        }
+      },
+      "DeviceOptions": {
+        "type": "object",
+        "properties": {
+          "userAgent": {
+            "type": "string",
+            "description": "Custom user agent string"
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Device scale factor (DPR)"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Viewport width in pixels"
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Viewport height in pixels"
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Z]{2,3})?$",
+            "description": "Locale (e.g. en, en-US, pt-BR)"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Timezone (e.g. America/New_York)"
+          }
+        }
+      },
+      "ImageOptions": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["png", "jpeg", "webp", "gif", "avif"],
+            "default": "png",
+            "description": "Image output format"
+          },
+          "compression": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9,
+            "description": "PNG compression level (0 = fastest, 9 = smallest)"
+          },
+          "smooth": {
+            "type": "boolean",
+            "description": "Use adaptive filtering for PNG output"
+          },
+          "quality": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Image quality (0-100, applies to JPEG/WebP/AVIF)"
+          },
+          "resize": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 3,
+            "description": "Resize factor (e.g. 0.5 = half size, 2 = double size)"
+          },
+          "rotate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360,
+            "description": "Rotation angle in degrees"
+          },
+          "roundedBorders": {
+            "oneOf": [
+              { "type": "boolean" },
+              { "type": "number", "minimum": 0 }
+            ],
+            "description": "true for default rounded corners, or radius in pixels"
+          },
+          "padding": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Padding around the image in pixels"
+          },
+          "crop": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Left offset in pixels"
+              },
+              "top": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Top offset in pixels"
+              },
+              "width": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Crop width in pixels"
+              },
+              "height": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Crop height in pixels"
+              }
+            },
+            "required": ["left", "top", "width", "height"],
+            "description": "Crop region"
+          }
+        }
+      },
+      "VideoOptions": {
+        "type": "object",
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 60,
+            "description": "Frames per second"
+          },
+          "followNewTab": {
+            "type": "boolean",
+            "default": true,
+            "description": "Follow new tabs opened during recording"
+          },
+          "videoFrame": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1920,
+                "description": "Video frame width"
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1080,
+                "description": "Video frame height"
+              }
+            },
+            "description": "Video frame dimensions"
+          },
+          "videoCrf": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 51,
+            "default": 23,
+            "description": "Constant Rate Factor (0 = lossless, 51 = worst quality)"
+          },
+          "videoCodec": {
+            "type": "string",
+            "enum": ["libx264"],
+            "description": "Video codec"
+          },
+          "videoPreset": {
+            "type": "string",
+            "enum": ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
+            "default": "ultrafast",
+            "description": "FFmpeg encoding preset (faster = larger file, slower = smaller file)"
+          },
+          "videoBitrate": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 10000,
+            "default": 3000,
+            "description": "Video bitrate in kbps"
+          },
+          "recordDurationLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "default": 30,
+            "description": "Maximum recording duration in seconds"
+          }
+        }
+      },
+      "PdfOptions": {
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "default": 1,
+            "description": "Scale of the webpage rendering"
+          },
+          "displayHeaderFooter": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show header and footer"
+          },
+          "headerTemplate": {
+            "type": "string",
+            "default": "",
+            "description": "HTML template for the page header"
+          },
+          "footerTemplate": {
+            "type": "string",
+            "default": "",
+            "description": "HTML template for the page footer"
+          },
+          "printBackground": {
+            "type": "boolean",
+            "default": true,
+            "description": "Print background graphics"
+          },
+          "landscape": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use landscape orientation"
+          },
+          "pageRanges": {
+            "type": "string",
+            "default": "",
+            "description": "Page ranges to print (e.g. '1-5, 8, 11-13')"
+          },
+          "format": {
+            "type": "string",
+            "default": "A4",
+            "description": "Paper format (A4, Letter, Legal, Tabloid, etc.)"
+          },
+          "width": {
+            "type": "string",
+            "description": "Paper width with units (e.g. '8.5in', '210mm')"
+          },
+          "height": {
+            "type": "string",
+            "description": "Paper height with units (e.g. '11in', '297mm')"
+          },
+          "margin": {
+            "type": "object",
+            "properties": {
+              "top": { "type": "string", "default": "0px", "description": "Top margin" },
+              "right": { "type": "string", "default": "0px", "description": "Right margin" },
+              "bottom": { "type": "string", "default": "0px", "description": "Bottom margin" },
+              "left": { "type": "string", "default": "0px", "description": "Left margin" }
+            },
+            "description": "Page margins (values with units, e.g. '20px', '1in', '10mm')"
+          },
+          "preferCSSPageSize": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use page size defined by CSS @page rules"
+          },
+          "omitBackground": {
+            "type": "boolean",
+            "default": false,
+            "description": "Hide default white background for transparent output"
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 30000,
+            "description": "PDF generation timeout (ms)"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "degraded"],
+            "description": "healthy if browsers are available, degraded otherwise"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Current server time"
+          },
+          "browserPool": {
+            "type": "object",
+            "properties": {
+              "available": { "type": "integer", "description": "Idle browsers ready to use" },
+              "borrowed": { "type": "integer", "description": "Browsers currently in use" },
+              "pending": { "type": "integer", "description": "Requests waiting for a browser" },
+              "min": { "type": "integer", "description": "Configured minimum pool size" },
+              "max": { "type": "integer", "description": "Configured maximum pool size" }
+            }
+          },
+          "uptime": {
+            "type": "number",
+            "description": "Server uptime in seconds"
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "used": { "type": "string", "description": "Heap memory used (e.g. '256 MB')" },
+              "total": { "type": "string", "description": "Total heap memory (e.g. '512 MB')" }
             }
           }
         }
