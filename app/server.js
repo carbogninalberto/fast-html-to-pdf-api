@@ -79,6 +79,11 @@ fastify.get("/health", function (request, reply) {
 fastify.post("/render", renderController);
 fastify.get("/render", renderController);
 
+// Drain browser pool on Fastify close (after in-flight requests finish)
+fastify.addHook("onClose", async () => {
+  await browserPool.drain();
+});
+
 const start = async () => {
   try {
     // Initialize browser pool and await warmup before starting server
@@ -113,8 +118,7 @@ async function shutdown(signal) {
   timeout.unref();
 
   try {
-    await fastify.close();
-    await browserPool.drain();
+    await fastify.close(); // onClose hook drains browser pool after in-flight requests
   } catch (err) {
     console.error("Error during shutdown:", err);
   }
