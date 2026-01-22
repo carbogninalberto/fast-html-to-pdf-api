@@ -42,7 +42,7 @@ export function validateConfig(config) {
         scale: z.number().positive().optional(),
         width: z.number().nonnegative().optional(),
         height: z.number().nonnegative().optional(),
-        locale: z.string().optional(),
+        locale: z.string().regex(/^[a-z]{2,3}(-[A-Z]{2,3})?$/, "Invalid locale format (e.g. en, en-US)").optional(),
         timezone: z.string().optional(),
         cache: z.boolean().optional(),
         cacheKey: z.string().optional(),
