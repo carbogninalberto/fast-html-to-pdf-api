@@ -174,14 +174,14 @@ class BrowserPool extends EventEmitter {
 
           // Check age-based recycling
           const age = Date.now() - browser._poolCreatedAt;
-          const maxAge = options.maxBrowserAge || 10 * 60 * 1000;
+          const maxAge = parseInt(process.env.POOL_MAX_BROWSER_AGE_MS) || options.maxBrowserAge || 10 * 60 * 1000;
           if (age > maxAge) {
             this.metrics.totalRecycled++;
             return false;
           }
 
           // Check request count-based recycling
-          const maxRequests = options.maxRequestsPerBrowser || 100;
+          const maxRequests = parseInt(process.env.POOL_MAX_REQUESTS_PER_BROWSER) || options.maxRequestsPerBrowser || 100;
           if (browser._requestCount > maxRequests) {
             this.metrics.totalRecycled++;
             return false;
@@ -191,7 +191,7 @@ class BrowserPool extends EventEmitter {
           if (browser.process()) {
             try {
               const memUsage = process.memoryUsage();
-              const maxMemory = options.maxMemoryMB || 500;
+              const maxMemory = parseInt(process.env.POOL_MAX_MEMORY_MB) || options.maxMemoryMB || 500;
               if (memUsage.heapUsed / 1024 / 1024 > maxMemory) {
                 this.metrics.totalRecycled++;
                 return false;
