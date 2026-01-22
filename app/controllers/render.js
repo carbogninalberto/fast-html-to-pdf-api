@@ -65,13 +65,17 @@ export async function renderController(request, reply) {
     }
   } catch (error) {
     // Handle validation errors
-    let errorMessage;
+    let parsed;
     try {
-      errorMessage = JSON.parse(error.message);
+      parsed = JSON.parse(error.message);
     } catch (e) {
-      errorMessage = { error: error.message };
+      // Not a JSON-encoded validation error
+      parsed = null;
     }
-    
-    return reply.code(400).send({ error: errorMessage });
+
+    if (parsed && parsed.summary) {
+      return reply.code(400).send({ error: "Invalid configuration", details: parsed.details });
+    }
+    return reply.code(400).send({ error: error.message || "Bad request" });
   }
 }
