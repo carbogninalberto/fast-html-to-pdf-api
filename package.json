@@ -6,7 +6,7 @@
   "main": "app/server.js",
   "scripts": {
     "test": "vitest run",
-    "coverage": "vitest run --coverage",
+    "coverage": "vitest run --coverage --coverage.all --coverage.include=app/**",
     "test:api": "node app/server.js & PID=$!; sleep 2; API_URL=http://localhost:3000 npm run coverage; STATUS=$?; kill $PID 2>/dev/null; exit $STATUS",
     "test:watch": "vitest",
     "start": "node app/server.js",
