@@ -104,16 +104,22 @@ const start = async () => {
 };
 start();
 
-process.on("SIGINT", async () => {
-  console.log("Server is shutting down");
-  await browserPool.drain();
-  await fastify.close();
-  process.exit(0);
-});
+async function shutdown(signal) {
+  console.log(`${signal} received, shutting down`);
+  const timeout = setTimeout(() => {
+    console.error("Shutdown timed out after 30s, forcing exit");
+    process.exit(1);
+  }, 30000);
+  timeout.unref();
 
-process.on("SIGTERM", async () => {
-  console.log("Server is shutting down");
-  await browserPool.drain();
-  await fastify.close();
+  try {
+    await fastify.close();
+    await browserPool.drain();
+  } catch (err) {
+    console.error("Error during shutdown:", err);
+  }
   process.exit(0);
-});
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
