@@ -216,30 +216,29 @@ export class PuppeteerWrapper {
     this.browser = this.poolResource.browser;
     this.page = this.poolResource.page;
 
-    // IMPORTANT: Set our API settings BEFORE any navigation
-    // Set viewport first (this is crucial for rendering)
-    await this.page.setViewport({
-      width: this.device.width,
-      height: this.device.height,
-      deviceScaleFactor: this.device.scale,
-    });
-
-    // Set other page configuration
-    await this.page.setJavaScriptEnabled(this.device.javascriptEnabled);
-    await this.page.setCacheEnabled(this.device.cache);
-    await this.page.setUserAgent(this.device.userAgent);
-
-    // Set headers (including locale if provided)
+    // Set all page configuration in parallel
     const headers = { ...this.headers };
     if (this.device.locale) {
       headers['Accept-Language'] = this.device.locale;
     }
-    await this.page.setExtraHTTPHeaders(headers);
 
-    // Set timezone if provided
+    const setupOps = [
+      this.page.setViewport({
+        width: this.device.width,
+        height: this.device.height,
+        deviceScaleFactor: this.device.scale,
+      }),
+      this.page.setJavaScriptEnabled(this.device.javascriptEnabled),
+      this.page.setCacheEnabled(this.device.cache),
+      this.page.setUserAgent(this.device.userAgent),
+      this.page.setExtraHTTPHeaders(headers),
+    ];
+
     if (this.device.timezone) {
-      await this.page.emulateTimezone(this.device.timezone);
+      setupOps.push(this.page.emulateTimezone(this.device.timezone));
     }
+
+    await Promise.all(setupOps);
   }
 
   async renderLazyAnimations() {
