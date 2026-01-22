@@ -314,32 +314,27 @@ export class PuppeteerWrapper {
     let filename;
     let host = this.url ? new URL(this.url).hostname : 'html-content';
 
-    // set config with all the properties of this class
-    const config = {
-      ...this,
-    };
-
     switch (this.type) {
       case "image":
         const imageType = this.image?.type || "png";
         filename = `image-${host}-${Date.now()}.${imageType}`;
         contentType = `image/${imageType}`;
-        content = await captureImage(this.page, config);
+        content = await captureImage(this.page, { image: this.image, render: this.render });
         break;
       case "pdf":
         filename = `pdf-${host}-${Date.now()}.pdf`;
         contentType = "application/pdf";
-        content = await capturePDF(this.page, config);
+        content = await capturePDF(this.page, { pdf: this.pdf });
         break;
       case "video":
         filename = `video-${host}-${Date.now()}.mp4`;
         contentType = "video/mp4";
-        content = await captureVideo(this.page, config);
+        content = await captureVideo(this.page, { video: this.video, render: this.render });
         break;
       case "html":
         filename = `html-${host}-${Date.now()}.html`;
         contentType = "text/html";
-        content = await captureHTML(this.page, config);
+        content = await captureHTML(this.page);
         break;
       default:
         throw new Error("Invalid capture type");
