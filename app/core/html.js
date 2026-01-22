@@ -181,5 +181,10 @@ export async function captureHTML(page) {
   // Convert the HTML string to a Buffer
   const buffer = Buffer.from(htmlContent, "utf8");
 
+  const maxSize = 500 * 1024 * 1024; // 500MB
+  if (buffer.byteLength > maxSize) {
+    throw new Error("HTML capture exceeded 500MB size limit");
+  }
+
   return buffer;
 }
