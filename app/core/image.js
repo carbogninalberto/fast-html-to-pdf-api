@@ -19,7 +19,8 @@ export async function captureImage(page, config) {
 
   // Initialize Sharp pipeline
   let sharpImage = sharp(result);
-  
+  result = null; // Free screenshot buffer after Sharp init
+
   // Cache metadata once at the beginning
   const originalMetadata = await sharpImage.metadata();
   
