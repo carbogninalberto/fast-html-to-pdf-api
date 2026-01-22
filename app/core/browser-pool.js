@@ -8,8 +8,7 @@ import {
   BROWSER_LAUNCH_TIMEOUT_MS, BROWSER_MAX_RETRIES, BROWSER_RETRY_DELAY_MS,
   BROWSER_MAX_AGE_MS, BROWSER_MAX_REQUESTS, BROWSER_MAX_MEMORY_MB,
   BROWSER_PAGE_TIMEOUT_MS,
-  POOL_DESTROY_TIMEOUT_MS, POOL_EVICTION_INTERVAL_MS,
-  POOL_SCALE_INCREMENT, POOL_SCALE_CHECK_INTERVAL_MS, POOL_IDLE_SCALE_DOWN_MS,
+  POOL_DESTROY_TIMEOUT_MS, POOL_EVICTION_INTERVAL_MS, POOL_IDLE_SCALE_DOWN_MS,
   CLEANUP_INTERVAL_MS, TEMP_FILE_MAX_AGE_MS, TEMP_DIR_MAX_AGE_MS,
   DEFAULT_VIEWPORT_WIDTH, DEFAULT_VIEWPORT_HEIGHT,
 } from "../config/constants.js";
@@ -31,9 +30,6 @@ class BrowserPool extends EventEmitter {
     this.pool = null;
     this.isShuttingDown = false;
     this.cleanupInterval = null;
-    this.scalingInterval = null;
-    this.initialMax = 10;
-    this.lastBorrowedTime = Date.now();
     this.metrics = {
       totalAcquired: 0,
       totalReleased: 0,
@@ -279,11 +275,6 @@ class BrowserPool extends EventEmitter {
       this.emit("poolError", { type: "destroy", error: err });
     });
 
-    this.initialMax = poolOptions.max;
-
-    // Start dynamic pool scaling check
-    this.startDynamicScaling();
-
     // Start periodic cleanup of Chrome temp files
     this.startPeriodicCleanup(options.cleanupInterval || CLEANUP_INTERVAL_MS);
 
@@ -362,45 +353,6 @@ class BrowserPool extends EventEmitter {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
       logger.info("Periodic cleanup stopped");
-    }
-  }
-
-  startDynamicScaling() {
-    this.scalingInterval = setInterval(() => {
-      if (!this.pool || this.isShuttingDown) return;
-
-      const max = this.pool.max;
-      const borrowed = this.pool.borrowed;
-      const threshold = max - Math.floor(max / 5);
-
-      if (borrowed > 0) {
-        this.lastBorrowedTime = Date.now();
-      }
-
-      // Max scaling
-      if (borrowed >= threshold) {
-        this.pool.max = max + POOL_SCALE_INCREMENT;
-        logger.info(`Pool scaled up: max ${max} -> ${this.pool.max}`);
-      } else if (max > this.initialMax && borrowed < max - POOL_SCALE_INCREMENT) {
-        const newMax = Math.max(max - POOL_SCALE_INCREMENT, this.initialMax);
-        this.pool.max = newMax;
-        logger.info(`Pool scaled down: max ${max} -> ${newMax}`);
-      }
-
-      // Min scaling
-      const currentMin = this.pool.min;
-      if (borrowed >= this.pool.size) {
-        this.pool.min = currentMin + 1;
-      } else if (currentMin > 1 && (Date.now() - this.lastBorrowedTime) > POOL_IDLE_SCALE_DOWN_MS) {
-        this.pool.min = 1;
-      }
-    }, POOL_SCALE_CHECK_INTERVAL_MS);
-  }
-
-  stopDynamicScaling() {
-    if (this.scalingInterval) {
-      clearInterval(this.scalingInterval);
-      this.scalingInterval = null;
     }
   }
 
@@ -548,8 +500,6 @@ class BrowserPool extends EventEmitter {
     this.isShuttingDown = true;
 
     try {
-      // Stop scaling and cleanup
-      this.stopDynamicScaling();
       this.stopPeriodicCleanup();
 
       // Drain and clear the pool
