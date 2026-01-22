@@ -49,7 +49,6 @@ export async function blockCookies(page) {
         if (el.tagName.toLowerCase() === "a") continue; // Skip links
         const text = el.innerText.toLowerCase();
         if (flatAcceptWords.some((word) => text.includes(word.toLowerCase()))) {
-          console.log("Found accept button:", el);
           el.click();
           break;
         }

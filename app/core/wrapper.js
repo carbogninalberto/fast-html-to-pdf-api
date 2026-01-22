@@ -43,7 +43,6 @@ import browserPool from "./browser-pool.js";
 
 export class PuppeteerWrapper {
   constructor(config) {
-    // console.log("config", config);
     this.browser = null;
     this.page = null;
     this.recorder = null;

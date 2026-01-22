@@ -120,7 +120,7 @@ class BrowserPool extends EventEmitter {
             retries--;
             if (retries === 0) {
               this.metrics.totalErrors++;
-              console.error("Failed to create browser after retries:", error);
+              console.error({ err: error, retries: 0 }, "browser-pool: failed to create browser after retries");
               throw error;
             }
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -156,7 +156,7 @@ class BrowserPool extends EventEmitter {
             lifetime: Date.now() - resource.createdAt
           });
         } catch (error) {
-          console.error("Failed to destroy browser instance:", error);
+          console.error({ err: error }, "browser-pool: failed to destroy browser instance");
           this.metrics.totalErrors++;
         }
       },
@@ -236,13 +236,13 @@ class BrowserPool extends EventEmitter {
     // Handle pool events
     this.pool.on("factoryCreateError", (err) => {
       this.metrics.totalErrors++;
-      console.error("Browser pool factory create error:", err);
+      console.error({ err }, "browser-pool: factory create error");
       this.emit("poolError", { type: "create", error: err });
     });
 
     this.pool.on("factoryDestroyError", (err) => {
       this.metrics.totalErrors++;
-      console.error("Browser pool factory destroy error:", err);
+      console.error({ err }, "browser-pool: factory destroy error");
       this.emit("poolError", { type: "destroy", error: err });
     });
 
@@ -399,7 +399,7 @@ class BrowserPool extends EventEmitter {
       const succeeded = promises.filter(p => p.status === 'fulfilled').length;
       console.log(`Browser pool warmed up with ${succeeded}/${minSize} instances`);
     } catch (error) {
-      console.error("Failed to warm up browser pool:", error);
+      console.error({ err: error }, "browser-pool: failed to warm up pool");
     }
   }
 
@@ -431,7 +431,7 @@ class BrowserPool extends EventEmitter {
         return resource;
       } catch (error) {
         lastError = error;
-        console.warn(`Failed to acquire browser (attempt ${i + 1}/${maxRetries}):`, error.message);
+        console.warn({ err: error, attempt: i + 1, maxRetries }, "browser-pool: failed to acquire browser");
 
         if (i < maxRetries - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
@@ -483,14 +483,14 @@ class BrowserPool extends EventEmitter {
 
       this.emit("browserReleased", { poolStats: this.getStats() });
     } catch (error) {
-      console.error("Error releasing browser to pool:", error);
+      console.error({ err: error }, "browser-pool: error releasing browser to pool");
       this.metrics.totalErrors++;
 
       // Try to destroy the problematic resource
       try {
         await this.pool.destroy(resource);
       } catch (destroyError) {
-        console.error("Failed to destroy problematic browser:", destroyError);
+        console.error({ err: destroyError }, "browser-pool: failed to destroy problematic browser");
       }
     }
   }
@@ -524,7 +524,7 @@ class BrowserPool extends EventEmitter {
       console.log("Browser pool drained and cleared");
       this.emit("poolDrained");
     } catch (error) {
-      console.error("Error draining browser pool:", error);
+      console.error({ err: error }, "browser-pool: error draining pool");
     }
   }
 

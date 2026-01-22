@@ -27,7 +27,7 @@ export async function captureVideo(page, config) {
 
     return Buffer.concat(chunks);
   } catch (error) {
-    console.error("Error during video capture:", error);
+    console.error({ err: error }, "video: error during capture");
     throw error;
   }
 }
