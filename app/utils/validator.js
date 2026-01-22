@@ -44,8 +44,6 @@ export function validateConfig(config) {
         height: z.number().nonnegative().optional(),
         locale: z.string().regex(/^[a-z]{2,3}(-[A-Z]{2,3})?$/, "Invalid locale format (e.g. en, en-US)").optional(),
         timezone: z.string().optional(),
-        cache: z.boolean().optional(),
-        cacheKey: z.string().optional(),
       })
       .optional(),
     image: z

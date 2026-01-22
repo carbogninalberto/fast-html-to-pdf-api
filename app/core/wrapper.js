@@ -101,10 +101,6 @@ export class PuppeteerWrapper {
       timezone: config?.device?.timezone ?? "UTC",
       // javascript enabled
       javascriptEnabled: config?.device?.javascriptEnabled ?? true,
-      // cache settings: TTL & cache key
-      cache: config?.device?.cache ?? false,
-      // cache key
-      cacheKey: config?.device?.cacheKey ?? "",
     };
 
     // specific configs for video, pdf, etc.
@@ -229,7 +225,6 @@ export class PuppeteerWrapper {
         deviceScaleFactor: this.device.scale,
       }),
       this.page.setJavaScriptEnabled(this.device.javascriptEnabled),
-      this.page.setCacheEnabled(this.device.cache),
       this.page.setUserAgent(this.device.userAgent),
       this.page.setExtraHTTPHeaders(headers),
     ];
