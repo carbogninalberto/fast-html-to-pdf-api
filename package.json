@@ -6,6 +6,8 @@
   "main": "app/server.js",
   "scripts": {
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:api": "node app/server.js & PID=$!; sleep 2; API_URL=http://localhost:3000 npm run coverage; STATUS=$?; kill $PID 2>/dev/null; exit $STATUS",
     "test:watch": "vitest",
     "start": "node app/server.js",
     "dev": "nodemon app/server.js",
@@ -31,6 +33,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.18"
   }
 }
