@@ -12,6 +12,7 @@ class BrowserPool extends EventEmitter {
     this.cleanupInterval = null;
     this.scalingInterval = null;
     this.initialMax = 10;
+    this.lastBorrowedTime = Date.now();
     this.metrics = {
       totalAcquired: 0,
       totalReleased: 0,
@@ -217,7 +218,7 @@ class BrowserPool extends EventEmitter {
     };
 
     const poolOptions = {
-      min: options.min || 1,
+      min: 1,
       max: options.max || 5,
       acquireTimeoutMillis: options.acquireTimeout || 30000,
       createTimeoutMillis: options.createTimeout || 30000,
@@ -337,6 +338,8 @@ class BrowserPool extends EventEmitter {
   }
 
   startDynamicScaling() {
+    const idleThresholdMs = 5 * 60 * 1000;
+
     this.scalingInterval = setInterval(() => {
       if (!this.pool || this.isShuttingDown) return;
 
@@ -344,15 +347,28 @@ class BrowserPool extends EventEmitter {
       const borrowed = this.pool.borrowed;
       const threshold = max - Math.floor(max / 5);
 
+      if (borrowed > 0) {
+        this.lastBorrowedTime = Date.now();
+      }
+
+      // Max scaling
       if (borrowed >= threshold) {
-        // Near limit: increase by 10
         this.pool.max = max + 10;
         console.log(`Pool scaled up: max ${max} -> ${this.pool.max}`);
       } else if (max > this.initialMax && borrowed < max - 10) {
-        // Under-utilized: decrease by 10 (but not below initial max)
         const newMax = Math.max(max - 10, this.initialMax);
         this.pool.max = newMax;
         console.log(`Pool scaled down: max ${max} -> ${newMax}`);
+      }
+
+      // Min scaling
+      const currentMin = this.pool.min;
+      if (borrowed >= this.pool.size) {
+        // All instances busy: increase min by 1
+        this.pool.min = currentMin + 1;
+      } else if (currentMin > 1 && (Date.now() - this.lastBorrowedTime) > idleThresholdMs) {
+        // Idle for 5+ minutes: decrease min to 1
+        this.pool.min = 1;
       }
     }, 10000);
   }
