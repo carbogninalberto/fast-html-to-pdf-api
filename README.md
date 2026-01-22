@@ -4,182 +4,255 @@
 
 ---
 
-
-
-
 # Fast HTML to PDF, Screenshots, and Video API
 
-Welcome to the **Fast HTML to PDF, Screenshots, and Video API**! 🚀
-
-This is a lightweight version of the software used at [html2pdfapi.com](https://html2pdfapi.com).
-
-It provides a basic yet performant wrapper along with additional features to enhance the standard Puppeteer experience.
+A lightweight, high-performance rendering API built on Puppeteer. This is the open-source version of the software powering [html2pdfapi.com](https://html2pdfapi.com).
 
 ## Features
 
-✅ Generate PNG images from any URL or HTML content<br>
-✅ Generate PDFs from any URL or HTML content<br>
-✅ Generate Videos from any URL with smooth animation<br>
-✅ **Direct HTML rendering** - Pass HTML content directly without needing a URL<br>
-✅ Support for custom headers (like Authorization)<br>
-✅ Support to render Lazy animations<br>
-✅ Additional support for blocking: Cookies, Ads, Trackers, Banner<br>
-✅ High-Performance webserver<br>
-✅ Extended and simplified API wrapper to Puppeteer
+- 📸 PNG, JPEG, WebP, GIF, AVIF screenshots from any URL or HTML
+- 📄 PDF generation with full page layout control
+- 🎬 MP4 video recording with smooth scroll animation
+- 🌐 Full HTML capture with all resources embedded inline
+- ⚡ Browser pool with configurable recycling and warmup
+- 🔧 Structured JSON logging (Pino)
+- 🐳 Docker-ready with CI pipeline
 
+## Getting Started
 
-## License
+### Requirements
 
-For usage in commercial services, please refer to the `license.txt` file in this repository.
+- Node.js 24+
+- FFmpeg (for video recording)
 
-Note: License is not enforced, but we are a small team, and any support to further develop this product would be greatly appreciated! 🙏
+### Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+The server starts on `http://localhost:3000`. API docs are available at `/docs`.
+
+For video support on macOS (Homebrew):
+
+```bash
+FFMPEG_PATH=/opt/homebrew/bin/ffmpeg npm run dev
+```
+
+### Docker
+
+Pull from the GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/carbogninalberto/fast-html-to-pdf-api:latest
+docker run -p 3000:3000 ghcr.io/carbogninalberto/fast-html-to-pdf-api:latest
+```
+
+Or build locally:
+
+```bash
+docker build . -t bakney/fastrender
+docker run -p 3000:3000 bakney/fastrender
+```
+
+For ARM-based machines (Apple Silicon):
+
+```bash
+docker build --platform linux/amd64 . -t render
+docker run --platform linux/amd64 -p 3000:3000 render
+```
 
 ## API Usage
-
-### Render from URL
-
-Use the Playground at [html2pdfapi](https://html2pdfapi.com/playground) (a free account is required), to create the API request in your favorite language.
-You can omit the `apiKey` parameter.
-
-**Example - Generate PDF from URL:**
-```bash
-curl -X POST http://localhost:3000/render \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com",
-    "type": "pdf"
-  }' \
-  --output output.pdf
-```
-
-### Render from HTML Content
-
-You can now pass HTML content directly to the API without needing a URL! This is perfect for:
-- Generating PDFs from dynamically created HTML
-- Creating images from HTML templates
-- Converting HTML email templates to images
-- Any scenario where you have HTML as a string
-
-**Example - Generate PDF from HTML:**
-```bash
-curl -X POST http://localhost:3000/render \
-  -H "Content-Type: application/json" \
-  -d '{
-    "html": "<!DOCTYPE html><html><head><title>My Document</title><style>body { font-family: Arial; padding: 40px; } h1 { color: #333; }</style></head><body><h1>Hello World!</h1><p>This PDF was generated from HTML content.</p></body></html>",
-    "type": "pdf"
-  }' \
-  --output output.pdf
-```
-
-**Example - Generate PNG from HTML:**
-```bash
-curl -X POST http://localhost:3000/render \
-  -H "Content-Type: application/json" \
-  -d '{
-    "html": "<!DOCTYPE html><html><head><style>body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; } .card { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; }</style></head><body><div class=\"card\"><h1>Beautiful Card</h1><p>Rendered from HTML!</p></div></body></html>",
-    "type": "image",
-    "image": { "type": "png" }
-  }' \
-  --output output.png
-```
-
-**Example - With Custom Options:**
-```bash
-curl -X POST http://localhost:3000/render \
-  -H "Content-Type: application/json" \
-  -d '{
-    "html": "<html><body><h1>Custom Settings</h1></body></html>",
-    "type": "pdf",
-    "device": {
-      "width": 800,
-      "height": 600
-    },
-    "pdf": {
-      "format": "Letter",
-      "printBackground": true,
-      "margin": {
-        "top": "20px",
-        "right": "20px",
-        "bottom": "20px",
-        "left": "20px"
-      }
-    }
-  }' \
-  --output custom.pdf
-```
-
-**Important Notes:**
-- Either `url` OR `html` must be provided (not both)
-- All standard options (device settings, PDF options, image options, etc.) work with both URL and HTML modes
-- When using HTML content, network idle wait conditions (`networkidle0`, `networkidle2`) are automatically adjusted to prevent timeouts
-
-The Saas solution of our service provides out-of-the-box async support so that you don't have to implement your own.
-
-There are many libraries you can use to achieve it, it depends on the language you are using, this is a very lightweight and versatile solution if you are looking
-for a simple, yet performant solution.
-
-## API Reference
 
 ### Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/render` | POST | Render URL or HTML to PDF/Image/Video |
-| `/render?config=...` | GET | Render URL using GET with JSON config parameter |
+| `/render` | POST | Render URL or HTML to PDF/Image/Video/HTML |
+| `/render?config=...` | GET | Same as above, with JSON config as query param |
 | `/health` | GET | Health check with browser pool stats |
+| `/ping` | GET | Simple connectivity check (returns `"pong"`) |
 | `/docs` | GET | Swagger API documentation |
 
 ### Request Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | string | Either url or html | URL to render |
-| `html` | string | Either url or html | HTML content to render |
-| `type` | string | Yes | Output type: `image`, `pdf`, `video`, `html` |
-| `device` | object | No | Device settings (width, height, userAgent, etc.) |
-| `render` | object | No | Render options (waitTime, fullPage, scroll, etc.) |
-| `image` | object | No | Image settings (type, quality, compression, etc.) |
-| `pdf` | object | No | PDF settings (format, margins, orientation, etc.) |
-| `video` | object | No | Video settings (fps, duration, codec, etc.) |
+| `url` | string | One of `url` or `html` | URL to render |
+| `html` | string | One of `url` or `html` | Raw HTML content to render |
+| `type` | string | Yes | `image`, `pdf`, `video`, or `html` |
+| `device` | object | No | Viewport settings (width, height, userAgent) |
+| `render` | object | No | Render options (waitTime, fullPage, scroll) |
+| `image` | object | No | Image settings (type, quality, compression, crop, resize, rotation) |
+| `pdf` | object | No | PDF settings (format, margins, orientation, header/footer) |
+| `video` | object | No | Video settings (fps, duration, codec, bitrate, crf, preset) |
 
-For complete API documentation, visit `/docs` endpoint after starting the server.
+### Examples
 
-## Getting Started with Development
+**Screenshot from URL:**
 
-To get started, run the following commands:
-
-```
-npm i
-npm run dev
-```
-
-## Build and Run in Docker
-
-### Quick usage
-
-Install the docker image from the Github registry of this repository
-
-```
-docker pull ghcr.io/carbogninalberto/fast-html-to-pdf-api:latest
-docker run -p 3000:3000 ghcr.io/carbogninalberto/fast-html-to-pdf-api:latest
+```bash
+curl -X POST http://localhost:3000/render \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "type": "image"}' \
+  --output screenshot.png
 ```
 
-### Prerequisites
+**PDF from HTML:**
 
-- Docker installed on your system
-
-### Build the Docker image
-
-To build the Docker image, run the following command in the project root directory:
-
+```bash
+curl -X POST http://localhost:3000/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
+    "type": "pdf",
+    "pdf": {"format": "A4", "margin": {"top": "20px", "bottom": "20px"}}
+  }' \
+  --output output.pdf
 ```
-docker build --platform linux/amd64 . -t render
+
+**WebP image with custom quality:**
+
+```bash
+curl -X POST http://localhost:3000/render \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "type": "image", "image": {"type": "webp", "quality": 80}}' \
+  --output output.webp
 ```
 
-### Run the Docker container
+**Video with scroll animation:**
 
-To run the Docker container, use the following command:
+```bash
+curl -X POST http://localhost:3000/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "type": "video",
+    "video": {"fps": 24},
+    "render": {"scroll": {"animate": true, "duration": 3000}}
+  }' \
+  --output output.mp4
+```
 
+**Full HTML capture (resources embedded as data URIs):**
+
+```bash
+curl -X POST http://localhost:3000/render \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "type": "html"}' \
+  --output page.html
 ```
-docker run --platform linux/amd64 -p 3000:3000 render
+
+**GET request with config parameter:**
+
+```bash
+curl "http://localhost:3000/render?config=%7B%22url%22%3A%22https%3A%2F%2Fexample.com%22%2C%22type%22%3A%22image%22%7D" \
+  --output screenshot.png
 ```
+
+## Configuration
+
+All settings are driven by environment variables with sensible defaults.
+
+### Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PORT` | `3000` | HTTP server port |
+| `BODY_LIMIT_BYTES` | `52428800` | Max request body size (50 MB) |
+| `SHUTDOWN_TIMEOUT_MS` | `30000` | Graceful shutdown timeout |
+| `LOG_LEVEL` | `info` | Log level (trace, debug, info, warn, error, fatal) |
+
+### Browser Pool
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POOL_MIN` | `2` | Minimum browser instances |
+| `POOL_MAX` | `10` | Maximum browser instances |
+| `POOL_ACQUIRE_TIMEOUT_MS` | `30000` | Max wait to acquire a browser |
+| `POOL_IDLE_TIMEOUT_MS` | `30000` | Idle time before eviction |
+| `BROWSER_MAX_AGE_MS` | `600000` | Max browser lifetime (10 min) |
+| `BROWSER_MAX_REQUESTS` | `100` | Max requests per browser before recycling |
+| `BROWSER_MAX_MEMORY_MB` | `500` | Memory limit per browser |
+
+### Video
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FFMPEG_PATH` | `/usr/bin/ffmpeg` | Path to FFmpeg binary |
+| `VIDEO_MAX_SCROLL_DURATION_MS` | `20000` | Max scroll animation duration |
+
+### Viewport
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEFAULT_VIEWPORT_WIDTH` | `1920` | Default viewport width |
+| `DEFAULT_VIEWPORT_HEIGHT` | `1080` | Default viewport height |
+
+## Testing
+
+### Unit Tests
+
+```bash
+npm test
+```
+
+With coverage report (97% line coverage required):
+
+```bash
+npm run coverage
+```
+
+### End-to-End Tests
+
+Requires a running server on port 3000:
+
+```bash
+# Terminal 1: start the server
+FFMPEG_PATH=/opt/homebrew/bin/ffmpeg node app/server.js
+
+# Terminal 2: run E2E tests
+npm run test:e2e
+```
+
+E2E tests validate output format correctness using magic bytes (PNG, WebP, PDF headers, MP4 ftyp box, HTML structure).
+
+### CI
+
+The GitHub Actions workflow runs on every push:
+
+1. Unit tests with 97% coverage gate
+2. Docker build
+3. E2E tests against the running container
+
+## Health Check
+
+`GET /health` returns pool status and memory usage:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-01-22T12:00:00.000Z",
+  "browserPool": {
+    "available": 2,
+    "borrowed": 1,
+    "pending": 0,
+    "min": 2,
+    "max": 10
+  },
+  "uptime": 3600,
+  "memory": {
+    "used": "256 MB",
+    "total": "512 MB"
+  }
+}
+```
+
+Returns `200` when healthy, `503` when degraded (no browsers available).
+
+## License
+
+For usage in commercial services, please refer to the `license.txt` file in this repository.
+
+Note: License is not enforced, but we are a small team, and any support to further develop this product would be greatly appreciated! 🙏
