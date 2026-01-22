@@ -1,6 +1,14 @@
 import sharp from "sharp";
 import { IMAGE_RESIZE_MIN, IMAGE_RESIZE_MAX } from "../config/constants.js";
 
+/**
+ * Captures a screenshot of the page and applies image transformations.
+ * @param {import('puppeteer').Page} page - The Puppeteer page instance.
+ * @param {Object} config - Image configuration.
+ * @param {Object} config.image - Image processing options (type, resize, rotate, crop, etc.).
+ * @param {Object} config.render - Render options (fullPage, etc.).
+ * @returns {Promise<Buffer>} The processed image as a buffer.
+ */
 export async function captureImage(page, config) {
   let result = await page.screenshot({
     fullPage: config.render?.fullPage ?? false,

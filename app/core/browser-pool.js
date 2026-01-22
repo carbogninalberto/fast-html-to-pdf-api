@@ -13,6 +13,17 @@ import {
   DEFAULT_VIEWPORT_WIDTH, DEFAULT_VIEWPORT_HEIGHT,
 } from "../config/constants.js";
 
+/**
+ * Manages a pool of Puppeteer browser instances with automatic scaling,
+ * recycling, and cleanup of temporary files.
+ * @extends EventEmitter
+ * @fires BrowserPool#browserCreated
+ * @fires BrowserPool#browserDestroyed
+ * @fires BrowserPool#browserAcquired
+ * @fires BrowserPool#browserReleased
+ * @fires BrowserPool#poolError
+ * @fires BrowserPool#poolDrained
+ */
 class BrowserPool extends EventEmitter {
   constructor() {
     super();
@@ -31,6 +42,18 @@ class BrowserPool extends EventEmitter {
     };
   }
 
+  /**
+   * Initializes the browser pool with the given options.
+   * @param {Object} options - Pool configuration options.
+   * @param {number} [options.min=1] - Minimum pool size.
+   * @param {number} [options.max=5] - Maximum pool size.
+   * @param {number} [options.acquireTimeout] - Timeout for acquiring a browser (ms).
+   * @param {number} [options.createTimeout] - Timeout for creating a browser (ms).
+   * @param {number} [options.idleTimeout] - Idle timeout before eviction (ms).
+   * @param {number} [options.maxBrowserAge] - Max browser age before recycling (ms).
+   * @param {number} [options.maxRequestsPerBrowser] - Max requests per browser before recycling.
+   * @param {boolean} [options.warmUp=true] - Whether to pre-warm the pool.
+   */
   initialize(options = {}) {
     const defaultBrowserArgs = [
       "--no-sandbox",
@@ -383,6 +406,10 @@ class BrowserPool extends EventEmitter {
     }
   }
 
+  /**
+   * Pre-warms the pool by acquiring and releasing the minimum number of browsers.
+   * @returns {Promise<void>}
+   */
   async warmUp() {
     try {
       const minSize = this.pool.min;
@@ -406,6 +433,13 @@ class BrowserPool extends EventEmitter {
     }
   }
 
+  /**
+   * Acquires a browser resource from the pool with retry logic.
+   * @param {Object} [options] - Acquisition options.
+   * @param {number} [options.retries=3] - Number of retry attempts.
+   * @returns {Promise<{browser: import('puppeteer').Browser, page: import('puppeteer').Page, createdAt: number}>}
+   * @throws {Error} If acquisition fails after all retries.
+   */
   async acquire(options = {}) {
     if (this.isShuttingDown) {
       throw new Error("Browser pool is shutting down");
@@ -446,6 +480,10 @@ class BrowserPool extends EventEmitter {
     throw lastError || new Error("Failed to acquire browser from pool");
   }
 
+  /**
+   * Resets a page by closing the old one and creating a fresh page.
+   * @param {Object} resource - The browser resource containing browser and page.
+   */
   async resetPage(resource) {
     try {
       const { browser, page } = resource;
@@ -473,6 +511,12 @@ class BrowserPool extends EventEmitter {
     }
   }
 
+  /**
+   * Releases a browser resource back to the pool.
+   * @param {Object} resource - The browser resource to release.
+   * @param {Object} [options] - Release options.
+   * @param {boolean} [options.destroy=false] - If true, destroys the resource instead of releasing.
+   */
   async release(resource, options = {}) {
     try {
       this.metrics.totalReleased++;
@@ -509,6 +553,10 @@ class BrowserPool extends EventEmitter {
     process.once("SIGTERM", () => shutdown("SIGTERM"));
   }
 
+  /**
+   * Drains the pool, stopping all intervals and closing all browsers.
+   * @returns {Promise<void>}
+   */
   async drain() {
     this.isShuttingDown = true;
 
@@ -531,6 +579,10 @@ class BrowserPool extends EventEmitter {
     }
   }
 
+  /**
+   * Returns current pool statistics.
+   * @returns {Object|null} Pool stats or null if not initialized.
+   */
   getStats() {
     if (!this.pool) {
       return null;

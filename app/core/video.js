@@ -3,6 +3,14 @@ import { PuppeteerScreenRecorder } from "puppeteer-screen-recorder";
 import { VIDEO_MAX_SCROLL_DURATION_MS } from "../config/constants.js";
 import logger from "../utils/logger.js";
 
+/**
+ * Records a video of the page, optionally scrolling during capture.
+ * @param {import('puppeteer').Page} page - The Puppeteer page instance.
+ * @param {Object} config - Video configuration.
+ * @param {Object} config.video - Video encoding options (fps, codec, bitrate, etc.).
+ * @param {Object} config.render - Render options (scroll animation settings).
+ * @returns {Promise<Buffer>} The recorded video as a buffer.
+ */
 export async function captureVideo(page, config) {
   const videoConfig = {
     ...config.video,
@@ -34,6 +42,11 @@ export async function captureVideo(page, config) {
   }
 }
 
+/**
+ * Performs a smooth auto-scroll animation on the page.
+ * @param {import('puppeteer').Page} page - The Puppeteer page instance.
+ * @param {number} [duration=5000] - Scroll duration in milliseconds (capped at max).
+ */
 async function performAutoScroll(page, duration = 5000) {
   duration = Math.min(duration, VIDEO_MAX_SCROLL_DURATION_MS);
   const startTime = Date.now();

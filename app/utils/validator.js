@@ -3,6 +3,11 @@
 // Add this import at the top of the file
 import { z } from "zod";
 
+/**
+ * Validates a render configuration object against the schema.
+ * @param {Object} config - The configuration object to validate.
+ * @returns {{error: boolean, message?: Object}} Validation result with error flag and optional message.
+ */
 export function validateConfig(config) {
   const configSchema = z.object({
     url: z.string().url().optional(),

@@ -8,6 +8,11 @@ async function getAcceptedWords() {
   return _acceptedWords;
 }
 
+/**
+ * Attempts to dismiss cookie consent banners by clicking accept/agree buttons.
+ * @param {import('puppeteer').Page} page - The Puppeteer page instance.
+ * @returns {Promise<void>}
+ */
 export async function blockCookies(page) {
   const ACCEPTED_WORDS = await getAcceptedWords();
   await page.evaluate(async (ACCEPTED_WORDS) => {

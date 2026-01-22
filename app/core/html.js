@@ -1,5 +1,11 @@
 import { HTML_CAPTURE_MAX_SIZE_BYTES } from "../config/constants.js";
 
+/**
+ * Captures the full HTML content of a page with all resources (CSS, JS, images, fonts) embedded inline.
+ * @param {import('puppeteer').Page} page - The Puppeteer page instance.
+ * @returns {Promise<Buffer>} The complete HTML document as a UTF-8 buffer.
+ * @throws {Error} If the resulting HTML exceeds the size limit.
+ */
 export async function captureHTML(page) {
   // Get the full HTML content of the page with embedded CSS, JS, and images
   const htmlContent = await page.evaluate(async () => {
