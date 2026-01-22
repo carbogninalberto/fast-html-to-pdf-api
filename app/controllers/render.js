@@ -38,28 +38,24 @@ export async function renderController(request, reply) {
       
       return reply.send(content);
     } catch (error) {
-      console.error("Rendering error:", error);
-      
-      // Check if it's a pool-related error
+      request.log.error({ err: error, url: config?.url, type: config?.type }, "Rendering error");
+
       if (error.message && error.message.includes("pool")) {
         return reply
           .code(503)
-          .send({ 
-            error: "Service temporarily unavailable. Browser pool is at capacity.",
-            details: error.message 
-          });
+          .send({ error: "Service temporarily unavailable" });
       }
-      
+
       return reply
         .code(500)
-        .send({ error: "An error occurred during rendering", details: error.message });
+        .send({ error: "An error occurred during rendering" });
     } finally {
       // Always try to clean up resources
       if (wrapper) {
         try {
           await wrapper.close();
         } catch (cleanupError) {
-          console.error("Error during cleanup:", cleanupError);
+          request.log.error({ err: cleanupError }, "Error during cleanup");
         }
       }
     }
