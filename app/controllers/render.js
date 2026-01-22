@@ -12,7 +12,11 @@ export async function renderController(request, reply) {
   try {
     let config;
     if (request.method === "GET") {
-      config = JSON.parse(request.query.config);
+      try {
+        config = JSON.parse(request.query.config);
+      } catch (e) {
+        return reply.code(400).send({ error: "Invalid JSON in config query parameter" });
+      }
     } else {
       config = request.body;
     }
