@@ -7,6 +7,10 @@
 # Fast HTML to PDF, Screenshots, and Video API
 
 A lightweight, high-performance rendering API built on Puppeteer. This is the open-source version of the software powering [html2pdfapi.com](https://html2pdfapi.com).
+The SaaS version includes additional features out of the box:
+- Async support with a job queue for background processing
+- Webhook notifications when jobs complete
+- Direct S3 upload to your own bucket
 
 ## Features
 
