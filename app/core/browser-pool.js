@@ -1,10 +1,8 @@
 import puppeteer from "puppeteer";
 import genericPool from "generic-pool";
 import { EventEmitter } from "events";
-import { exec, execSync } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
+import fs from "fs/promises";
+import path from "path";
 
 class BrowserPool extends EventEmitter {
   constructor() {
@@ -264,18 +262,31 @@ class BrowserPool extends EventEmitter {
    */
   async cleanupChromeTempFiles() {
     try {
-      const commands = [
-        // Clean /tmp directory
-        'find /tmp -name ".com.google.Chrome.*" -type f -mmin +5 -delete 2>/dev/null || true',
-        // Clean user data directories
-        'find /tmp -name "puppeteer_dev_chrome_profile-*" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true',
-        // Clean Chrome crash dumps
-        'find /tmp -name "Crashpad" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true',
-      ];
+      const tmpDir = "/tmp";
+      const now = Date.now();
+      const fiveMinMs = 5 * 60 * 1000;
+      const thirtyMinMs = 30 * 60 * 1000;
 
-      for (const cmd of commands) {
+      let entries;
+      try {
+        entries = await fs.readdir(tmpDir, { withFileTypes: true });
+      } catch (err) {
+        return;
+      }
+
+      for (const entry of entries) {
+        const fullPath = path.join(tmpDir, entry.name);
         try {
-          await execAsync(cmd);
+          const stat = await fs.stat(fullPath);
+          const age = now - stat.mtimeMs;
+
+          if (entry.name.startsWith(".com.google.Chrome.") && entry.isFile() && age > fiveMinMs) {
+            await fs.unlink(fullPath);
+          } else if (entry.name.startsWith("puppeteer_dev_chrome_profile-") && entry.isDirectory() && age > thirtyMinMs) {
+            await fs.rm(fullPath, { recursive: true, force: true });
+          } else if (entry.name === "Crashpad" && entry.isDirectory() && age > thirtyMinMs) {
+            await fs.rm(fullPath, { recursive: true, force: true });
+          }
         } catch (err) {
           // Ignore errors - files might not exist or already deleted
         }
