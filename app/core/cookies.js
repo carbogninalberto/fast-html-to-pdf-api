@@ -1,6 +1,15 @@
-import { ACCEPTED_WORDS } from "./constants.js";
+let _acceptedWords = null;
+
+async function getAcceptedWords() {
+  if (!_acceptedWords) {
+    const { ACCEPTED_WORDS } = await import("./constants.js");
+    _acceptedWords = ACCEPTED_WORDS;
+  }
+  return _acceptedWords;
+}
 
 export async function blockCookies(page) {
+  const ACCEPTED_WORDS = await getAcceptedWords();
   await page.evaluate(async (ACCEPTED_WORDS) => {
     // try to press esc to close modals
     // Simulate pressing the Escape key to close modals
