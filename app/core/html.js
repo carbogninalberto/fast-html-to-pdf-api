@@ -1,3 +1,5 @@
+import { HTML_CAPTURE_MAX_SIZE_BYTES } from "../config/constants.js";
+
 export async function captureHTML(page) {
   // Get the full HTML content of the page with embedded CSS, JS, and images
   const htmlContent = await page.evaluate(async () => {
@@ -189,8 +191,7 @@ export async function captureHTML(page) {
   // Convert the HTML string to a Buffer
   const buffer = Buffer.from(htmlContent, "utf8");
 
-  const maxSize = 500 * 1024 * 1024; // 500MB
-  if (buffer.byteLength > maxSize) {
+  if (buffer.byteLength > HTML_CAPTURE_MAX_SIZE_BYTES) {
     throw new Error("HTML capture exceeded 500MB size limit");
   }
 

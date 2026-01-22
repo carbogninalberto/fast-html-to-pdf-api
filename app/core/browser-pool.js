@@ -3,6 +3,14 @@ import genericPool from "generic-pool";
 import { EventEmitter } from "events";
 import fs from "fs/promises";
 import path from "path";
+import {
+  BROWSER_LAUNCH_TIMEOUT_MS, BROWSER_MAX_RETRIES, BROWSER_RETRY_DELAY_MS,
+  BROWSER_MAX_AGE_MS, BROWSER_MAX_REQUESTS, BROWSER_MAX_MEMORY_MB,
+  POOL_DESTROY_TIMEOUT_MS, POOL_EVICTION_INTERVAL_MS,
+  POOL_SCALE_INCREMENT, POOL_SCALE_CHECK_INTERVAL_MS, POOL_IDLE_SCALE_DOWN_MS,
+  CLEANUP_INTERVAL_MS, TEMP_FILE_MAX_AGE_MS, TEMP_DIR_MAX_AGE_MS,
+  DEFAULT_VIEWPORT_WIDTH, DEFAULT_VIEWPORT_HEIGHT,
+} from "../config/constants.js";
 
 class BrowserPool extends EventEmitter {
   constructor() {
@@ -50,20 +58,20 @@ class BrowserPool extends EventEmitter {
       "--no-default-browser-check",
       "--disable-extensions",
       "--disable-component-extensions-with-background-pages",
-      `--window-size=${options.windowWidth || 1920},${options.windowHeight || 1080}`,
+      `--window-size=${options.windowWidth || DEFAULT_VIEWPORT_WIDTH},${options.windowHeight || DEFAULT_VIEWPORT_HEIGHT}`,
     ];
 
     const factory = {
       create: async () => {
         const startTime = Date.now();
-        let retries = 3;
+        let retries = BROWSER_MAX_RETRIES;
 
         while (retries > 0) {
           try {
             const browser = await puppeteer.launch({
               headless: options.headless !== false ? "new" : false,
               args: options.browserArgs || defaultBrowserArgs,
-              timeout: options.launchTimeout || 30000,
+              timeout: options.launchTimeout || BROWSER_LAUNCH_TIMEOUT_MS,
               ...options.browserOptions,
             });
 
@@ -90,8 +98,8 @@ class BrowserPool extends EventEmitter {
             });
 
             // Performance optimizations
-            await page.setDefaultNavigationTimeout(options.navigationTimeout || 30000);
-            await page.setDefaultTimeout(options.pageTimeout || 30000);
+            await page.setDefaultNavigationTimeout(options.navigationTimeout || BROWSER_LAUNCH_TIMEOUT_MS);
+            await page.setDefaultTimeout(options.pageTimeout || BROWSER_LAUNCH_TIMEOUT_MS);
 
             // Block unnecessary resources for better performance
             if (options.blockResources) {
@@ -123,7 +131,7 @@ class BrowserPool extends EventEmitter {
               console.error({ err: error, retries: 0 }, "browser-pool: failed to create browser after retries");
               throw error;
             }
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, BROWSER_RETRY_DELAY_MS));
           }
         }
       },
@@ -175,14 +183,14 @@ class BrowserPool extends EventEmitter {
 
           // Check age-based recycling
           const age = Date.now() - browser._poolCreatedAt;
-          const maxAge = parseInt(process.env.POOL_MAX_BROWSER_AGE_MS) || options.maxBrowserAge || 10 * 60 * 1000;
+          const maxAge = parseInt(process.env.POOL_MAX_BROWSER_AGE_MS) || options.maxBrowserAge || BROWSER_MAX_AGE_MS;
           if (age > maxAge) {
             this.metrics.totalRecycled++;
             return false;
           }
 
           // Check request count-based recycling
-          const maxRequests = parseInt(process.env.POOL_MAX_REQUESTS_PER_BROWSER) || options.maxRequestsPerBrowser || 100;
+          const maxRequests = parseInt(process.env.POOL_MAX_REQUESTS_PER_BROWSER) || options.maxRequestsPerBrowser || BROWSER_MAX_REQUESTS;
           if (browser._requestCount > maxRequests) {
             this.metrics.totalRecycled++;
             return false;
@@ -192,7 +200,7 @@ class BrowserPool extends EventEmitter {
           if (browser.process()) {
             try {
               const memUsage = process.memoryUsage();
-              const maxMemory = parseInt(process.env.POOL_MAX_MEMORY_MB) || options.maxMemoryMB || 500;
+              const maxMemory = parseInt(process.env.POOL_MAX_MEMORY_MB) || options.maxMemoryMB || BROWSER_MAX_MEMORY_MB;
               if (memUsage.heapUsed / 1024 / 1024 > maxMemory) {
                 this.metrics.totalRecycled++;
                 return false;
@@ -206,7 +214,7 @@ class BrowserPool extends EventEmitter {
           await Promise.race([
             resource.page.evaluate(() => true),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Page unresponsive")), 5000)
+              setTimeout(() => reject(new Error("Page unresponsive")), BROWSER_PAGE_TIMEOUT_MS)
             )
           ]);
 
@@ -222,9 +230,9 @@ class BrowserPool extends EventEmitter {
       max: options.max || 5,
       acquireTimeoutMillis: options.acquireTimeout || 30000,
       createTimeoutMillis: options.createTimeout || 30000,
-      destroyTimeoutMillis: options.destroyTimeout || 5000,
-      idleTimeoutMillis: options.idleTimeout || 30000,
-      evictionRunIntervalMillis: options.evictionInterval || 60000,
+      destroyTimeoutMillis: options.destroyTimeout || POOL_DESTROY_TIMEOUT_MS,
+      idleTimeoutMillis: options.idleTimeout || POOL_IDLE_SCALE_DOWN_MS,
+      evictionRunIntervalMillis: options.evictionInterval || POOL_EVICTION_INTERVAL_MS,
       testOnBorrow: true,
       testOnReturn: false,
       autostart: true,
@@ -255,7 +263,7 @@ class BrowserPool extends EventEmitter {
     this.startDynamicScaling();
 
     // Start periodic cleanup of Chrome temp files
-    this.startPeriodicCleanup(options.cleanupInterval || 5 * 60 * 1000); // Default: 5 minutes
+    this.startPeriodicCleanup(options.cleanupInterval || CLEANUP_INTERVAL_MS);
 
     // Pre-warm if not disabled
     if (options.warmUp !== false) {
@@ -271,8 +279,6 @@ class BrowserPool extends EventEmitter {
     try {
       const tmpDir = "/tmp";
       const now = Date.now();
-      const fiveMinMs = 5 * 60 * 1000;
-      const thirtyMinMs = 30 * 60 * 1000;
 
       let entries;
       try {
@@ -287,11 +293,11 @@ class BrowserPool extends EventEmitter {
           const stat = await fs.stat(fullPath);
           const age = now - stat.mtimeMs;
 
-          if (entry.name.startsWith(".com.google.Chrome.") && entry.isFile() && age > fiveMinMs) {
+          if (entry.name.startsWith(".com.google.Chrome.") && entry.isFile() && age > TEMP_FILE_MAX_AGE_MS) {
             await fs.unlink(fullPath);
-          } else if (entry.name.startsWith("puppeteer_dev_chrome_profile-") && entry.isDirectory() && age > thirtyMinMs) {
+          } else if (entry.name.startsWith("puppeteer_dev_chrome_profile-") && entry.isDirectory() && age > TEMP_DIR_MAX_AGE_MS) {
             await fs.rm(fullPath, { recursive: true, force: true });
-          } else if (entry.name === "Crashpad" && entry.isDirectory() && age > thirtyMinMs) {
+          } else if (entry.name === "Crashpad" && entry.isDirectory() && age > TEMP_DIR_MAX_AGE_MS) {
             await fs.rm(fullPath, { recursive: true, force: true });
           }
         } catch (err) {
@@ -338,8 +344,6 @@ class BrowserPool extends EventEmitter {
   }
 
   startDynamicScaling() {
-    const idleThresholdMs = 5 * 60 * 1000;
-
     this.scalingInterval = setInterval(() => {
       if (!this.pool || this.isShuttingDown) return;
 
@@ -353,10 +357,10 @@ class BrowserPool extends EventEmitter {
 
       // Max scaling
       if (borrowed >= threshold) {
-        this.pool.max = max + 10;
+        this.pool.max = max + POOL_SCALE_INCREMENT;
         console.log(`Pool scaled up: max ${max} -> ${this.pool.max}`);
-      } else if (max > this.initialMax && borrowed < max - 10) {
-        const newMax = Math.max(max - 10, this.initialMax);
+      } else if (max > this.initialMax && borrowed < max - POOL_SCALE_INCREMENT) {
+        const newMax = Math.max(max - POOL_SCALE_INCREMENT, this.initialMax);
         this.pool.max = newMax;
         console.log(`Pool scaled down: max ${max} -> ${newMax}`);
       }
@@ -364,13 +368,11 @@ class BrowserPool extends EventEmitter {
       // Min scaling
       const currentMin = this.pool.min;
       if (borrowed >= this.pool.size) {
-        // All instances busy: increase min by 1
         this.pool.min = currentMin + 1;
-      } else if (currentMin > 1 && (Date.now() - this.lastBorrowedTime) > idleThresholdMs) {
-        // Idle for 5+ minutes: decrease min to 1
+      } else if (currentMin > 1 && (Date.now() - this.lastBorrowedTime) > POOL_IDLE_SCALE_DOWN_MS) {
         this.pool.min = 1;
       }
-    }, 10000);
+    }, POOL_SCALE_CHECK_INTERVAL_MS);
   }
 
   stopDynamicScaling() {
@@ -434,7 +436,7 @@ class BrowserPool extends EventEmitter {
         console.warn({ err: error, attempt: i + 1, maxRetries }, "browser-pool: failed to acquire browser");
 
         if (i < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+          await new Promise(resolve => setTimeout(resolve, BROWSER_RETRY_DELAY_MS * (i + 1)));
         }
       }
     }

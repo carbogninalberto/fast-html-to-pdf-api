@@ -1,5 +1,6 @@
 import { PassThrough } from "stream";
 import { PuppeteerScreenRecorder } from "puppeteer-screen-recorder";
+import { VIDEO_MAX_SCROLL_DURATION_MS } from "../config/constants.js";
 
 export async function captureVideo(page, config) {
   const videoConfig = {
@@ -33,8 +34,7 @@ export async function captureVideo(page, config) {
 }
 
 async function performAutoScroll(page, duration = 5000) {
-  // cap the scroll duration to 20 seconds
-  duration = Math.min(duration, 20000);
+  duration = Math.min(duration, VIDEO_MAX_SCROLL_DURATION_MS);
   const startTime = Date.now();
   while (Date.now() - startTime < duration) {
     await page

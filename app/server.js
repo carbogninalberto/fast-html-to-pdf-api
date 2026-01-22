@@ -4,11 +4,15 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import fs from "fs/promises";
 import browserPool from "./core/browser-pool.js";
+import {
+  SERVER_PORT, PLUGIN_TIMEOUT_MS, BODY_LIMIT_BYTES, SHUTDOWN_TIMEOUT_MS,
+  POOL_MIN, POOL_MAX, POOL_ACQUIRE_TIMEOUT_MS, POOL_CREATE_TIMEOUT_MS, POOL_IDLE_TIMEOUT_MS,
+} from "./config/constants.js";
 
 const fastify = Fastify({
   logger: true,
-  pluginTimeout: 60000,
-  bodyLimit: 50 * 1024 * 1024, // 50MB
+  pluginTimeout: PLUGIN_TIMEOUT_MS,
+  bodyLimit: BODY_LIMIT_BYTES,
 });
 
 // Load swagger.json
@@ -88,19 +92,19 @@ const start = async () => {
   try {
     // Initialize browser pool and await warmup before starting server
     browserPool.initialize({
-      min: 2,
-      max: 10,
-      acquireTimeout: 30000,
-      createTimeout: 30000,
-      idleTimeout: 60000,
+      min: POOL_MIN,
+      max: POOL_MAX,
+      acquireTimeout: POOL_ACQUIRE_TIMEOUT_MS,
+      createTimeout: POOL_CREATE_TIMEOUT_MS,
+      idleTimeout: POOL_IDLE_TIMEOUT_MS,
       warmUp: false,
     });
     await browserPool.warmUp();
 
-    await fastify.listen({ port: 3000, host: "0.0.0.0" });
-    console.log(`Server started on port 3000`);
+    await fastify.listen({ port: SERVER_PORT, host: "0.0.0.0" });
+    console.log(`Server started on port ${SERVER_PORT}`);
     console.log(
-      `Swagger documentation available at http://localhost:3000/docs`
+      `Swagger documentation available at http://localhost:${SERVER_PORT}/docs`
     );
   } catch (err) {
     fastify.log.error(err);
@@ -112,9 +116,9 @@ start();
 async function shutdown(signal) {
   console.log(`${signal} received, shutting down`);
   const timeout = setTimeout(() => {
-    console.error("Shutdown timed out after 30s, forcing exit");
+    console.error("Shutdown timed out, forcing exit");
     process.exit(1);
-  }, 30000);
+  }, SHUTDOWN_TIMEOUT_MS);
   timeout.unref();
 
   try {

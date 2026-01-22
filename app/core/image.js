@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { IMAGE_RESIZE_MIN, IMAGE_RESIZE_MAX } from "../config/constants.js";
 
 export async function captureImage(page, config) {
   let result = await page.screenshot({
@@ -62,7 +63,7 @@ export async function captureImage(page, config) {
 
   // Apply resize
   if (resize && typeof resize === "number" && resize !== 1) {
-    const factor = Math.min(Math.max(resize, 0.1), 3); // Limit factor between 0.1 and 3
+    const factor = Math.min(Math.max(resize, IMAGE_RESIZE_MIN), IMAGE_RESIZE_MAX);
     const newWidth = Math.round(currentWidth * factor);
     const newHeight = Math.round(currentHeight * factor);
     
