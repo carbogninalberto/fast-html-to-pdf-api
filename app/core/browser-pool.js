@@ -369,8 +369,8 @@ class BrowserPool extends EventEmitter {
         // Increment request counter
         resource.browser._requestCount++;
 
-        // Clear page state
-        await this.resetPage(resource.page, options.clearLevel || "fast");
+        // Recreate page for clean state
+        await this.resetPage(resource);
 
         this.metrics.totalAcquired++;
         this.emit("browserAcquired", {
@@ -393,62 +393,29 @@ class BrowserPool extends EventEmitter {
     throw lastError || new Error("Failed to acquire browser from pool");
   }
 
-  async resetPage(page, clearLevel = "fast") {
+  async resetPage(resource) {
     try {
-      switch (clearLevel) {
-        case "none":
-          // Do nothing
-          break;
+      const { browser, page } = resource;
 
-        case "fast":
-          // Minimal reset for performance
-          await page.setViewport({ width: 1920, height: 1080 });
-          break;
-
-        case "medium":
-          // Reset page but keep browser state
-          await Promise.all([
-            page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 5000 }),
-            page.setViewport({ width: 1920, height: 1080 }),
-          ]);
-          break;
-
-        case "full":
-          // Complete reset
-          await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 5000 });
-
-          // Clear cookies
-          const cookies = await page.cookies();
-          if (cookies.length > 0) {
-            await page.deleteCookie(...cookies);
-          }
-
-          // Clear storage
-          await page.evaluate(() => {
-            try {
-              localStorage.clear();
-              sessionStorage.clear();
-              // Clear IndexedDB
-              if (indexedDB && indexedDB.databases) {
-                indexedDB.databases().then(databases => {
-                  databases.forEach(db => indexedDB.deleteDatabase(db.name));
-                });
-              }
-            } catch (e) {}
-          });
-
-          // Reset settings
-          await Promise.all([
-            page.setViewport({ width: 1920, height: 1080 }),
-            page.setExtraHTTPHeaders({}),
-            page.setUserAgent(
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            ),
-          ]);
-          break;
+      // Close old page and create a fresh one
+      if (page && !page.isClosed()) {
+        page.removeAllListeners();
+        await page.close().catch(() => {});
       }
+
+      const newPage = await browser.newPage();
+
+      newPage.on("error", (err) => {
+        this.metrics.totalErrors++;
+        this.emit("pageError", { error: err });
+      });
+      newPage.on("pageerror", (err) => {
+        this.metrics.totalErrors++;
+        this.emit("pageError", { error: err });
+      });
+
+      resource.page = newPage;
     } catch (error) {
-      // Log but don't throw - page might still be usable
       console.warn("Error resetting page state:", error.message);
     }
   }
