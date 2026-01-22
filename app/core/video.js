@@ -1,6 +1,7 @@
 import { PassThrough } from "stream";
 import { PuppeteerScreenRecorder } from "puppeteer-screen-recorder";
 import { VIDEO_MAX_SCROLL_DURATION_MS } from "../config/constants.js";
+import logger from "../utils/logger.js";
 
 export async function captureVideo(page, config) {
   const videoConfig = {
@@ -28,7 +29,7 @@ export async function captureVideo(page, config) {
 
     return Buffer.concat(chunks);
   } catch (error) {
-    console.error({ err: error }, "video: error during capture");
+    logger.error({ err: error }, "video: error during capture");
     throw error;
   }
 }

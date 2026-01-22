@@ -3,6 +3,7 @@ import genericPool from "generic-pool";
 import { EventEmitter } from "events";
 import fs from "fs/promises";
 import path from "path";
+import logger from "../utils/logger.js";
 import {
   BROWSER_LAUNCH_TIMEOUT_MS, BROWSER_MAX_RETRIES, BROWSER_RETRY_DELAY_MS,
   BROWSER_MAX_AGE_MS, BROWSER_MAX_REQUESTS, BROWSER_MAX_MEMORY_MB,
@@ -128,7 +129,7 @@ class BrowserPool extends EventEmitter {
             retries--;
             if (retries === 0) {
               this.metrics.totalErrors++;
-              console.error({ err: error, retries: 0 }, "browser-pool: failed to create browser after retries");
+              logger.error({ err: error, retries: 0 }, "browser-pool: failed to create browser after retries");
               throw error;
             }
             await new Promise(resolve => setTimeout(resolve, BROWSER_RETRY_DELAY_MS));
@@ -156,7 +157,7 @@ class BrowserPool extends EventEmitter {
 
           // Clean up Chrome temp files after browser destruction
           this.cleanupChromeTempFiles().catch((err) => {
-            console.warn("Non-critical: Failed to clean Chrome temp files:", err.message);
+            logger.warn({ err }, "browser-pool: non-critical temp file cleanup failure");
           });
 
           this.emit("browserDestroyed", {
@@ -164,7 +165,7 @@ class BrowserPool extends EventEmitter {
             lifetime: Date.now() - resource.createdAt
           });
         } catch (error) {
-          console.error({ err: error }, "browser-pool: failed to destroy browser instance");
+          logger.error({ err: error }, "browser-pool: failed to destroy browser instance");
           this.metrics.totalErrors++;
         }
       },
@@ -244,13 +245,13 @@ class BrowserPool extends EventEmitter {
     // Handle pool events
     this.pool.on("factoryCreateError", (err) => {
       this.metrics.totalErrors++;
-      console.error({ err }, "browser-pool: factory create error");
+      logger.error({ err }, "browser-pool: factory create error");
       this.emit("poolError", { type: "create", error: err });
     });
 
     this.pool.on("factoryDestroyError", (err) => {
       this.metrics.totalErrors++;
-      console.error({ err }, "browser-pool: factory destroy error");
+      logger.error({ err }, "browser-pool: factory destroy error");
       this.emit("poolError", { type: "destroy", error: err });
     });
 
@@ -267,7 +268,7 @@ class BrowserPool extends EventEmitter {
 
     // Pre-warm if not disabled
     if (options.warmUp !== false) {
-      this.warmUp().catch(console.error);
+      this.warmUp().catch((err) => logger.error({ err }, "browser-pool: warmup failed"));
     }
   }
 
@@ -308,7 +309,7 @@ class BrowserPool extends EventEmitter {
       this.metrics.tempFilesCleanedUp++;
       this.emit("tempFilesCleanedUp");
     } catch (error) {
-      console.warn("Chrome temp file cleanup warning:", error.message);
+      logger.warn({ err: error }, "browser-pool: chrome temp file cleanup warning");
     }
   }
 
@@ -329,7 +330,7 @@ class BrowserPool extends EventEmitter {
       this.cleanupChromeTempFiles().catch(() => {});
     }, intervalMs);
 
-    console.log(`Chrome temp file cleanup scheduled every ${intervalMs / 1000} seconds`);
+    logger.info(`Chrome temp file cleanup scheduled every ${intervalMs / 1000} seconds`);
   }
 
   /**
@@ -339,7 +340,7 @@ class BrowserPool extends EventEmitter {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
-      console.log("Periodic cleanup stopped");
+      logger.info("Periodic cleanup stopped");
     }
   }
 
@@ -358,11 +359,11 @@ class BrowserPool extends EventEmitter {
       // Max scaling
       if (borrowed >= threshold) {
         this.pool.max = max + POOL_SCALE_INCREMENT;
-        console.log(`Pool scaled up: max ${max} -> ${this.pool.max}`);
+        logger.info(`Pool scaled up: max ${max} -> ${this.pool.max}`);
       } else if (max > this.initialMax && borrowed < max - POOL_SCALE_INCREMENT) {
         const newMax = Math.max(max - POOL_SCALE_INCREMENT, this.initialMax);
         this.pool.max = newMax;
-        console.log(`Pool scaled down: max ${max} -> ${newMax}`);
+        logger.info(`Pool scaled down: max ${max} -> ${newMax}`);
       }
 
       // Min scaling
@@ -392,16 +393,16 @@ class BrowserPool extends EventEmitter {
           this.pool.acquire()
             .then((resource) => this.pool.release(resource))
             .catch((err) => {
-              console.warn(`Failed to warm up browser ${i + 1}:`, err.message);
+              logger.warn({ err, instance: i + 1 }, "browser-pool: failed to warm up browser");
             })
         );
       }
 
       await Promise.allSettled(promises);
       const succeeded = promises.filter(p => p.status === 'fulfilled').length;
-      console.log(`Browser pool warmed up with ${succeeded}/${minSize} instances`);
+      logger.info(`Browser pool warmed up with ${succeeded}/${minSize} instances`);
     } catch (error) {
-      console.error({ err: error }, "browser-pool: failed to warm up pool");
+      logger.error({ err: error }, "browser-pool: failed to warm up pool");
     }
   }
 
@@ -433,7 +434,7 @@ class BrowserPool extends EventEmitter {
         return resource;
       } catch (error) {
         lastError = error;
-        console.warn({ err: error, attempt: i + 1, maxRetries }, "browser-pool: failed to acquire browser");
+        logger.warn({ err: error, attempt: i + 1, maxRetries }, "browser-pool: failed to acquire browser");
 
         if (i < maxRetries - 1) {
           await new Promise(resolve => setTimeout(resolve, BROWSER_RETRY_DELAY_MS * (i + 1)));
@@ -468,7 +469,7 @@ class BrowserPool extends EventEmitter {
 
       resource.page = newPage;
     } catch (error) {
-      console.warn("Error resetting page state:", error.message);
+      logger.warn({ err: error }, "browser-pool: error resetting page state");
     }
   }
 
@@ -485,21 +486,21 @@ class BrowserPool extends EventEmitter {
 
       this.emit("browserReleased", { poolStats: this.getStats() });
     } catch (error) {
-      console.error({ err: error }, "browser-pool: error releasing browser to pool");
+      logger.error({ err: error }, "browser-pool: error releasing browser to pool");
       this.metrics.totalErrors++;
 
       // Try to destroy the problematic resource
       try {
         await this.pool.destroy(resource);
       } catch (destroyError) {
-        console.error({ err: destroyError }, "browser-pool: failed to destroy problematic browser");
+        logger.error({ err: destroyError }, "browser-pool: failed to destroy problematic browser");
       }
     }
   }
 
   setupShutdownHandlers() {
     const shutdown = async (signal) => {
-      console.log(`Received ${signal}, shutting down browser pool...`);
+      logger.info(`Received ${signal}, shutting down browser pool...`);
       await this.drain();
       process.exit(0);
     };
@@ -523,10 +524,10 @@ class BrowserPool extends EventEmitter {
       // Final cleanup of temp files
       await this.cleanupChromeTempFiles();
 
-      console.log("Browser pool drained and cleared");
+      logger.info("Browser pool drained and cleared");
       this.emit("poolDrained");
     } catch (error) {
-      console.error({ err: error }, "browser-pool: error draining pool");
+      logger.error({ err: error }, "browser-pool: error draining pool");
     }
   }
 
