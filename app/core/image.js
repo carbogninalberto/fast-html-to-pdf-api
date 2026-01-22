@@ -17,16 +17,16 @@ export async function captureImage(page, config) {
     crop,
   } = config.image;
 
+  // Get metadata from raw buffer before building the pipeline
+  const { width: origWidth, height: origHeight } = await sharp(result).metadata();
+
   // Initialize Sharp pipeline
   let sharpImage = sharp(result);
   result = null; // Free screenshot buffer after Sharp init
 
-  // Cache metadata once at the beginning
-  const originalMetadata = await sharpImage.metadata();
-  
   // Track current dimensions for operations that need them
-  let currentWidth = originalMetadata.width;
-  let currentHeight = originalMetadata.height;
+  let currentWidth = origWidth;
+  let currentHeight = origHeight;
 
   // Apply crop first if specified (before other transformations)
   if (crop) {
