@@ -7,7 +7,7 @@
   "scripts": {
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "test:api": "node app/server.js & PID=$!; sleep 2; API_URL=http://localhost:3000 npm run coverage; STATUS=$?; kill $PID 2>/dev/null; exit $STATUS",
+    "test:e2e": "API_URL=http://localhost:3000 vitest run tests/api.test.js --config vitest.e2e.config.js",
     "test:watch": "vitest",
     "start": "node app/server.js",
     "dev": "nodemon app/server.js",

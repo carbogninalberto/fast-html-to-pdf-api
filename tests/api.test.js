@@ -2,6 +2,35 @@ import { describe, it, expect } from "vitest";
 
 const API_URL = process.env.API_URL || "https://html2pdfapi.com";
 
+function isPNG(buffer) {
+  // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+  return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+}
+
+function isJPEG(buffer) {
+  // JPEG magic bytes: FF D8 FF
+  return buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+}
+
+function isWebP(buffer) {
+  // WebP: starts with RIFF....WEBP
+  const riff = String.fromCharCode(buffer[0], buffer[1], buffer[2], buffer[3]);
+  const webp = String.fromCharCode(buffer[8], buffer[9], buffer[10], buffer[11]);
+  return riff === "RIFF" && webp === "WEBP";
+}
+
+function isPDF(buffer) {
+  // PDF header: %PDF-
+  const header = String.fromCharCode(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+  return header === "%PDF-";
+}
+
+function isMP4(buffer) {
+  // MP4 ftyp box: bytes 4-7 are "ftyp"
+  const ftyp = String.fromCharCode(buffer[4], buffer[5], buffer[6], buffer[7]);
+  return ftyp === "ftyp";
+}
+
 describe("API integration tests", () => {
   it("should render an image from URL", async () => {
     const response = await fetch(`${API_URL}/render`, {
@@ -14,8 +43,9 @@ describe("API integration tests", () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("image/");
-    const buffer = await response.arrayBuffer();
+    const buffer = new Uint8Array(await response.arrayBuffer());
     expect(buffer.byteLength).toBeGreaterThan(0);
+    expect(isPNG(buffer)).toBe(true);
   });
 
   it("should render a PDF from URL", async () => {
@@ -29,8 +59,9 @@ describe("API integration tests", () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/pdf");
-    const buffer = await response.arrayBuffer();
+    const buffer = new Uint8Array(await response.arrayBuffer());
     expect(buffer.byteLength).toBeGreaterThan(0);
+    expect(isPDF(buffer)).toBe(true);
   });
 
   it("should render HTML content directly", async () => {
@@ -44,6 +75,9 @@ describe("API integration tests", () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("image/");
+    const buffer = new Uint8Array(await response.arrayBuffer());
+    expect(buffer.byteLength).toBeGreaterThan(0);
+    expect(isPNG(buffer)).toBe(true);
   });
 
   it("should return 400 for missing url and html", async () => {
@@ -94,6 +128,9 @@ describe("API integration tests", () => {
       }),
     });
     expect(response.status).toBe(200);
+    const buffer = new Uint8Array(await response.arrayBuffer());
+    expect(buffer.byteLength).toBeGreaterThan(0);
+    expect(isPNG(buffer)).toBe(true);
   });
 
   it("should support webp output format", async () => {
@@ -108,6 +145,24 @@ describe("API integration tests", () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("image/webp");
+    const buffer = new Uint8Array(await response.arrayBuffer());
+    expect(buffer.byteLength).toBeGreaterThan(0);
+    expect(isWebP(buffer)).toBe(true);
+  });
+
+  it("should capture HTML with embedded resources", async () => {
+    const response = await fetch(`${API_URL}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: "https://example.com",
+        type: "html",
+      }),
+    });
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    expect(text).toContain("<!DOCTYPE html>");
+    expect(text).toContain("<html");
   });
 
   it("should not expose internal error details", async () => {
@@ -175,4 +230,24 @@ describe("API performance tests", () => {
     expect(disposition).toContain("attachment");
     expect(disposition).toContain("filename=");
   });
+});
+
+describe("API video tests", () => {
+  it("should render a video from URL", async () => {
+    const response = await fetch(`${API_URL}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: "https://example.com",
+        type: "video",
+        video: { fps: 24 },
+        render: { scroll: { animate: true, duration: 1000 } },
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("video/");
+    const buffer = new Uint8Array(await response.arrayBuffer());
+    expect(buffer.byteLength).toBeGreaterThan(1000);
+    expect(isMP4(buffer)).toBe(true);
+  }, 60000);
 });
