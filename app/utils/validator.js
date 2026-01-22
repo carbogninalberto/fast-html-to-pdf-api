@@ -39,9 +39,9 @@ export function validateConfig(config) {
     device: z
       .object({
         userAgent: z.string().optional(),
-        deviceScaleFactor: z.number().positive().optional(),
-        width: z.number().positive().optional(),
-        height: z.number().positive().optional(),
+        scale: z.number().positive().optional(),
+        width: z.number().nonnegative().optional(),
+        height: z.number().nonnegative().optional(),
         locale: z.string().optional(),
         timezone: z.string().optional(),
         cache: z.boolean().optional(),
@@ -83,35 +83,14 @@ export function validateConfig(config) {
             height: z.number().positive().default(1080),
           })
           .optional(),
-        videoCrf: z
-          .number()
-          .positive()
-          .default(23)
-          .refine((val) => val === 23, {
-            message: "videoCrf must be strictly 23",
-          })
-          .optional(),
+        videoCrf: z.number().min(0).max(51).default(23).optional(),
         videoCodec: z.literal("libx264").optional(),
         videoPreset: z
-          .enum(["ultrafast", "fast", "slower"])
+          .enum(["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"])
           .default("ultrafast")
           .optional(),
-        videoBitrate: z
-          .number()
-          .positive()
-          .default(3000)
-          .refine((val) => val === 3000, {
-            message: "videoBitrate must be strictly 3000",
-          })
-          .optional(),
-        recordDurationLimit: z
-          .number()
-          .positive()
-          .default(30)
-          .refine((val) => val === 30, {
-            message: "recordDurationLimit must be strictly 30",
-          })
-          .optional(),
+        videoBitrate: z.number().min(500).max(10000).default(3000).optional(),
+        recordDurationLimit: z.number().min(1).max(60).default(30).optional(),
       })
       .optional(),
     pdf: z
@@ -124,8 +103,8 @@ export function validateConfig(config) {
         landscape: z.boolean().default(false),
         pageRanges: z.string().default(""),
         format: z.string().default("A4"),
-        width: z.number().positive().optional(),
-        height: z.number().positive().optional(),
+        width: z.string().optional(),
+        height: z.string().optional(),
         margin: z
           .object({
             top: z.string().default("0px"),
@@ -136,7 +115,7 @@ export function validateConfig(config) {
           .optional(),
         preferCSSPageSize: z.boolean().default(false),
         omitBackground: z.boolean().default(false),
-        timeout: z.number().positive().default(30000),
+        timeout: z.number().nonnegative().default(30000),
       })
       .optional(),
   }).refine((data) => data.url || data.html, {
