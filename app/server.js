@@ -81,15 +81,17 @@ fastify.get("/render", renderController);
 
 const start = async () => {
   try {
-    // Initialize browser pool before starting server
+    // Initialize browser pool and await warmup before starting server
     browserPool.initialize({
       min: 2,
       max: 10,
       acquireTimeout: 30000,
       createTimeout: 30000,
       idleTimeout: 60000,
+      warmUp: false,
     });
-    
+    await browserPool.warmUp();
+
     await fastify.listen({ port: 3000, host: "0.0.0.0" });
     console.log(`Server started on port 3000`);
     console.log(
