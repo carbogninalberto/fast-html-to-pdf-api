@@ -166,6 +166,12 @@ export class PuppeteerWrapper {
     // merge pdf config
     this.pdf = this.objectRecursiveMerge(this.defaultPDFConfig, this.pdf);
 
+    // IMPORTANT: Puppeteer ignores width/height when format is set.
+    // If user provides custom width or height, clear the format.
+    if (config?.pdf?.width || config?.pdf?.height) {
+      this.pdf.format = undefined;
+    }
+
     // Validate the config object
     let res = validateConfig(config);
     if (res?.error) {
