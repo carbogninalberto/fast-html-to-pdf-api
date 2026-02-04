@@ -96,6 +96,60 @@ describe("PuppeteerWrapper", () => {
       expect(w.pdf.format).toBe("A4"); // default
     });
 
+    // Regression tests for PDF custom dimensions (format must be cleared when width/height provided)
+    // See: Puppeteer ignores width/height when format is set
+    it("should clear pdf format when custom width is provided", () => {
+      const w = new PuppeteerWrapper({
+        url: "https://example.com",
+        type: "pdf",
+        pdf: { width: "210mm" },
+      });
+      expect(w.pdf.width).toBe("210mm");
+      expect(w.pdf.format).toBeUndefined();
+    });
+
+    it("should clear pdf format when custom height is provided", () => {
+      const w = new PuppeteerWrapper({
+        url: "https://example.com",
+        type: "pdf",
+        pdf: { height: "400mm" },
+      });
+      expect(w.pdf.height).toBe("400mm");
+      expect(w.pdf.format).toBeUndefined();
+    });
+
+    it("should clear pdf format when both custom width and height are provided", () => {
+      const w = new PuppeteerWrapper({
+        url: "https://example.com",
+        type: "pdf",
+        pdf: { width: "8.5in", height: "11in" },
+      });
+      expect(w.pdf.width).toBe("8.5in");
+      expect(w.pdf.height).toBe("11in");
+      expect(w.pdf.format).toBeUndefined();
+    });
+
+    it("should preserve other pdf options when clearing format for custom dimensions", () => {
+      const w = new PuppeteerWrapper({
+        url: "https://example.com",
+        type: "pdf",
+        pdf: {
+          width: "210mm",
+          height: "297mm",
+          landscape: true,
+          printBackground: false,
+          margin: { top: "10mm", bottom: "10mm", left: "5mm", right: "5mm" },
+        },
+      });
+      expect(w.pdf.format).toBeUndefined();
+      expect(w.pdf.width).toBe("210mm");
+      expect(w.pdf.height).toBe("297mm");
+      expect(w.pdf.landscape).toBe(true);
+      expect(w.pdf.printBackground).toBe(false);
+      expect(w.pdf.margin.top).toBe("10mm");
+      expect(w.pdf.margin.bottom).toBe("10mm");
+    });
+
     it("should set render options", () => {
       const w = new PuppeteerWrapper({
         url: "https://example.com",
@@ -294,6 +348,21 @@ describe("PuppeteerWrapper", () => {
       const result = await wrapper.captureOutput();
       expect(capturePDF).toHaveBeenCalled();
       expect(result.contentType).toBe("application/pdf");
+    });
+
+    it("should pass pdf config without format when custom dimensions are provided", async () => {
+      const w = new PuppeteerWrapper({
+        url: "https://example.com",
+        type: "pdf",
+        pdf: { width: "210mm", height: "400mm" },
+      });
+      await w.initialize();
+      await w.captureOutput();
+
+      const pdfConfig = capturePDF.mock.calls[0][1].pdf;
+      expect(pdfConfig.width).toBe("210mm");
+      expect(pdfConfig.height).toBe("400mm");
+      expect(pdfConfig.format).toBeUndefined();
     });
 
     it("should capture video type", async () => {
