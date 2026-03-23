@@ -495,7 +495,7 @@ The GitHub Actions workflow runs on every push:
 Returns `200` when healthy, `503` when degraded (no browsers available).
 
 ## License
+Apache License 2.0
 
-For usage in commercial services, please refer to the `license.txt` file in this repository.
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
-Note: License is not enforced, but we are a small team, and any support to further develop this product would be greatly appreciated! 🙏
