@@ -39,6 +39,9 @@
   "overrides": {
     "fluent-ffmpeg": {
       "async": "3.2.6"
+    },
+    "puppeteer-screen-recorder": {
+      "puppeteer": "$puppeteer"
     }
   }
 }

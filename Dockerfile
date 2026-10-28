@@ -7,7 +7,7 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev --legacy-peer-deps \
+RUN npm ci --omit=dev \
     && rm -rf node_modules/@ffmpeg-installer
 
 FROM debian:13-slim
@@ -30,7 +30,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y --no-install-recommends ca-certificates wget \
     && wget -q "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_amd64.deb" -O /tmp/chrome.deb \
     && echo "${CHROME_SHA256}  /tmp/chrome.deb" | sha256sum -c - \
-    && apt-get install -y --no-install-recommends /tmp/chrome.deb ffmpeg \
+    && apt-get install -y --no-install-recommends /tmp/chrome.deb ffmpeg tini \
     && rm -rf /var/lib/apt/lists/* /tmp/chrome.deb \
     && useradd --uid 1001 --create-home appuser
 
@@ -42,4 +42,5 @@ USER appuser
 
 EXPOSE 3000
 
+ENTRYPOINT ["tini", "--"]
 CMD ["node", "app/server.js"]
