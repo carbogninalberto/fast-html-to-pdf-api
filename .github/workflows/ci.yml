@@ -18,7 +18,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run unit tests with coverage
         run: npm run coverage
@@ -57,7 +60,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run E2E tests
         run: npm run test:e2e

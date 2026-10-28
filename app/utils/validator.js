@@ -135,7 +135,7 @@ export function validateConfig(config) {
         error: true,
         message: {
           summary: "Invalid configuration",
-          details: error.errors.map((err) => ({
+          details: error.issues.map((err) => ({
             path: err.path.join("."),
             message: err.message,
           })),

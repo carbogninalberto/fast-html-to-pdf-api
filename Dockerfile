@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS dependencies
+FROM node:24-trixie-slim AS dependencies
 
 WORKDIR /usr/src/app
 
@@ -7,12 +7,14 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev \
+RUN npm ci --omit=dev --legacy-peer-deps \
     && rm -rf node_modules/@ffmpeg-installer
 
-FROM node:24-bookworm-slim
+FROM debian:13-slim
 
 WORKDIR /usr/src/app
+
+COPY --from=dependencies /usr/local/bin/node /usr/local/bin/node
 
 ENV NODE_ENV=production \
     PUPPETEER_SKIP_DOWNLOAD=true \
