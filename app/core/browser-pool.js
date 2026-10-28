@@ -170,7 +170,7 @@ class BrowserPool extends EventEmitter {
 
           if (resource.browser) {
             resource.browser.removeAllListeners();
-            if (resource.browser.isConnected()) {
+            if (resource.browser.connected) {
               await resource.browser.close();
             }
           }
@@ -192,7 +192,7 @@ class BrowserPool extends EventEmitter {
 
       validate: async (resource) => {
         try {
-          if (!resource.browser || !resource.browser.isConnected()) {
+          if (!resource.browser || !resource.browser.connected) {
             return false;
           }
 

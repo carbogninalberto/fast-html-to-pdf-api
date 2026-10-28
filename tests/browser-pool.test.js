@@ -267,7 +267,7 @@ describe("BrowserPool", () => {
       };
       const mockBrowser = {
         removeAllListeners: vi.fn(),
-        isConnected: vi.fn().mockReturnValue(true),
+        connected: true,
         close: vi.fn().mockResolvedValue(undefined),
       };
       mockResource = { browser: mockBrowser, page: mockPage, createdAt: Date.now() };
@@ -295,7 +295,7 @@ describe("BrowserPool", () => {
     });
 
     it("should skip browser close if disconnected", async () => {
-      mockResource.browser.isConnected.mockReturnValue(false);
+      mockResource.browser.connected = false;
       await factory.destroy(mockResource);
       expect(mockResource.browser.close).not.toHaveBeenCalled();
     });
@@ -326,7 +326,7 @@ describe("BrowserPool", () => {
         evaluate: vi.fn().mockResolvedValue(true),
       };
       const mockBrowser = {
-        isConnected: vi.fn().mockReturnValue(true),
+        connected: true,
         process: vi.fn().mockReturnValue({ pid: 123 }),
         _poolCreatedAt: Date.now(),
         _requestCount: 0,
@@ -341,7 +341,7 @@ describe("BrowserPool", () => {
     });
 
     it("should return false if browser is not connected", async () => {
-      mockResource.browser.isConnected.mockReturnValue(false);
+      mockResource.browser.connected = false;
       expect(await factory.validate(mockResource)).toBe(false);
     });
 

@@ -1,55 +1,46 @@
-# Use the official Node.js 20.17.0 image as a parent image
-FROM node:24
+FROM node:24-trixie-slim AS dependencies
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
-
-RUN apt-get update && apt-get install curl gnupg ffmpeg findutils -y \
-    && curl --location --silent https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-    && apt-get update \
-    && apt-get install google-chrome-stable -y --no-install-recommends \
-    && apt-get install -y libvips-dev \
-    && rm -rf /var/lib/apt/lists/*
-# Copy package.json and package-lock.json (if available)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --os=linux --cpu=x64 sharp
+RUN npm ci --omit=dev \
+    && rm -rf node_modules/@ffmpeg-installer
 
-# Copy the rest of your app's source code
-COPY . .
+FROM debian:13-slim
 
-# Create cleanup script for Chrome temp files
-RUN echo '#!/bin/sh\n\
-# Clean Chrome temporary files\n\
-find /tmp -name ".com.google.Chrome.*" -type f -mmin +5 -delete 2>/dev/null || true\n\
-find /tmp -name "puppeteer_dev_chrome_profile-*" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true\n\
-find /tmp -name "Crashpad" -type d -mmin +30 -exec rm -rf {} + 2>/dev/null || true\n\
-' > /usr/local/bin/cleanup-chrome-temp.sh && chmod +x /usr/local/bin/cleanup-chrome-temp.sh
+WORKDIR /usr/src/app
 
-# Expose the port your app runs on
-EXPOSE 3000
+COPY --from=dependencies /usr/local/bin/node /usr/local/bin/node
 
-# Set environment variables
-ENV HOST=0.0.0.0
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+ENV NODE_ENV=production \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
+    FFMPEG_PATH=/usr/bin/ffmpeg \
+    HOST=0.0.0.0
 
-# SET FFMPEG_PATH
-ENV FFMPEG_PATH=/usr/bin/ffmpeg
+ARG CHROME_VERSION=156.0.8078.73-1
+ARG CHROME_SHA256=fd19c6895dad77f4d7f712c2d9f0d5eb682f4a6e7ff22b1bd0d40d03710d288c
 
-# Create a non-root user
-RUN useradd -m appuser
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates wget \
+    && wget -q "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_amd64.deb" -O /tmp/chrome.deb \
+    && echo "${CHROME_SHA256}  /tmp/chrome.deb" | sha256sum -c - \
+    && apt-get install -y --no-install-recommends /tmp/chrome.deb ffmpeg tini \
+    && rm -rf /var/lib/apt/lists/* /tmp/chrome.deb \
+    && useradd --uid 1001 --create-home appuser
 
-# Change ownership of the working directory to the non-root user
-RUN chown -R appuser:appuser /usr/src/app
+COPY --from=dependencies --chown=appuser:appuser /usr/src/app/node_modules ./node_modules
+COPY --chown=appuser:appuser package*.json ./
+COPY --chown=appuser:appuser app ./app
 
-# Switch to the non-root user
 USER appuser
 
+EXPOSE 3000
 
-# Start the application
+ENTRYPOINT ["tini", "--"]
 CMD ["node", "app/server.js"]

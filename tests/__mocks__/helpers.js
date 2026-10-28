@@ -35,7 +35,7 @@ export function createMockBrowser(overrides = {}) {
   const browser = {
     newPage: vi.fn().mockResolvedValue(createMockPage()),
     close: vi.fn().mockResolvedValue(undefined),
-    isConnected: vi.fn().mockReturnValue(true),
+    connected: true,
     process: vi.fn().mockReturnValue({ pid: 1234 }),
     on: vi.fn(),
     removeAllListeners: vi.fn(),

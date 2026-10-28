@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.DS_Store
+**/.DS_Store
+.env*
+coverage
+node_modules
+pdf-demo-examples
+screenshots
+tests
+tmp
+*.md
+pdf.demo.examples.sh
+vitest*.js
