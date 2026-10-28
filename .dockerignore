@@ -3,6 +3,7 @@
 .claude
 .DS_Store
 **/.DS_Store
+.env*
 coverage
 node_modules
 pdf-demo-examples
